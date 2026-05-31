@@ -25,7 +25,7 @@ export default function Login() {
           <div className="login-logo">
             <ShieldAlert size={32} />
           </div>
-          <h1 className="page-title" style={{ fontSize: '1.5rem' }}>DSVS Admin Portal</h1>
+          <h1 className="page-title" style={{ fontSize: '1.5rem' }}>FireSafetyPro Admin</h1>
           <p className="page-description">Sign in to manage devices and inspections</p>
         </div>
         
@@ -36,7 +36,7 @@ export default function Login() {
               id="username"
               type="text" 
               className="form-control" 
-              placeholder="admin@dsvs.local"
+              placeholder="admin@firesafetypro.local"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required

@@ -13,7 +13,7 @@ export default function Layout() {
       <aside className="sidebar">
         <div className="sidebar-logo">
           <ShieldAlert className="icon" size={28} />
-          <span>DSVS Admin</span>
+          <span>FireSafetyPro</span>
         </div>
         
         <nav className="nav-menu">

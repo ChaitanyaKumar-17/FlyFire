@@ -11,10 +11,10 @@ interface User {
 }
 
 const MOCK_USERS: User[] = [
-  { id: '1', fullName: 'Admin User', username: 'admin', email: 'admin@dsvs.local', role: 'ADMIN', isEnabled: true },
-  { id: '2', fullName: 'John Inspector', username: 'jinspector', email: 'john@dsvs.local', role: 'USER', isEnabled: true },
-  { id: '3', fullName: 'Sarah Field', username: 'sfield', email: 'sarah@dsvs.local', role: 'USER', isEnabled: true },
-  { id: '4', fullName: 'Mike Temp', username: 'mtemp', email: 'mike@dsvs.local', role: 'USER', isEnabled: false },
+  { id: '1', fullName: 'Admin User', username: 'admin', email: 'admin@firesafetypro.local', role: 'ADMIN', isEnabled: true },
+  { id: '2', fullName: 'John Inspector', username: 'jinspector', email: 'john@firesafetypro.local', role: 'USER', isEnabled: true },
+  { id: '3', fullName: 'Sarah Field', username: 'sfield', email: 'sarah@firesafetypro.local', role: 'USER', isEnabled: true },
+  { id: '4', fullName: 'Mike Temp', username: 'mtemp', email: 'mike@firesafetypro.local', role: 'USER', isEnabled: false },
 ];
 
 export default function Users() {
