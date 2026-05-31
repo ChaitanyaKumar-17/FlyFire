@@ -6,7 +6,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     totalDevices: 0,
     totalInspections: 0,
-    overdue: 0, // Mocked for now until we have scheduled dates
     activeInspectors: 0
   });
   const [recentInspections, setRecentInspections] = useState<any[]>([]);
@@ -17,41 +16,41 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // 1. Fetch total devices
-      const { count: devicesCount } = await supabase
-        .from('devices')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      // 2. Fetch total inspections
-      const { count: inspectionsCount } = await supabase
-        .from('inspections')
-        .select('*', { count: 'exact', head: true });
-
-      // 3. Fetch active inspectors
-      const { count: inspectorsCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'ROLE_USER')
-        .eq('is_enabled', true);
-
-      // 4. Fetch recent inspections (Join with devices and users)
-      const { data: recentInsps } = await supabase
-        .from('inspections')
-        .select(`
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
+      const isZonalAdmin = userData?.role === 'ROLE_ADMIN' && userData.zone_id;
+      
+      let devicesQuery = supabase.from('devices').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      let inspectionsQuery = supabase.from('inspections').select('*', { count: 'exact', head: true });
+      let inspectorsQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'ROLE_USER').eq('is_enabled', true);
+      let recentQuery = supabase.from('inspections').select(`
           id,
           status,
           created_at,
-          devices ( serial_number, device_type ),
+          devices!inner ( serial_number, zone_id, device_types ( name ) ),
           users ( full_name )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        `).order('created_at', { ascending: false }).limit(5);
+
+      if (isZonalAdmin) {
+        devicesQuery = devicesQuery.eq('zone_id', userData.zone_id);
+        // inspections don't have zone_id directly, we filter via related device
+        inspectionsQuery = supabase.from('inspections').select('*, devices!inner(zone_id)', { count: 'exact', head: true }).eq('devices.zone_id', userData.zone_id);
+        inspectorsQuery = inspectorsQuery.eq('zone_id', userData.zone_id);
+        recentQuery = recentQuery.eq('devices.zone_id', userData.zone_id);
+      }
+
+      const [{ count: devicesCount }, { count: inspectionsCount }, { count: inspectorsCount }, { data: recentInsps }] = await Promise.all([
+        devicesQuery,
+        inspectionsQuery,
+        inspectorsQuery,
+        recentQuery
+      ]);
 
       setStats({
         totalDevices: devicesCount || 0,
         totalInspections: inspectionsCount || 0,
-        overdue: 0,
         activeInspectors: inspectorsCount || 0
       });
 
@@ -93,15 +92,7 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="card stat-card">
-          <div className="stat-icon" style={{ color: 'var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.1)' }}>
-            <AlertTriangle size={24} />
-          </div>
-          <div className="stat-content">
-            <div className="stat-value">{stats.overdue}</div>
-            <div className="stat-label">Overdue for Inspection</div>
-          </div>
-        </div>
+
         
         <div className="card stat-card">
           <div className="stat-icon">
@@ -131,7 +122,7 @@ export default function Dashboard() {
               {recentInspections.map((insp) => (
                 <tr key={insp.id}>
                   <td style={{ fontWeight: 500 }}>{insp.devices?.serial_number || 'Unknown'}</td>
-                  <td>{insp.devices?.device_type || 'Unknown'}</td>
+                  <td>{insp.devices?.device_types?.name || 'Unknown'}</td>
                   <td>{insp.users?.full_name || 'Unknown'}</td>
                   <td>{new Date(insp.created_at).toLocaleString()}</td>
                   <td>

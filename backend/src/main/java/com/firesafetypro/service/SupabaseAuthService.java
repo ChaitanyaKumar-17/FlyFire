@@ -60,4 +60,21 @@ public class SupabaseAuthService {
         Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
         return (String) responseMap.get("id");
     }
+
+    public void deleteAuthUser(String userId) throws Exception {
+        String endpoint = supabaseUrl + "/auth/v1/admin/users/" + userId;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("apikey", serviceRoleKey)
+                .DELETE()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 400 && response.statusCode() != 404) {
+            throw new RuntimeException("Failed to delete Supabase Auth User: " + response.body());
+        }
+    }
 }

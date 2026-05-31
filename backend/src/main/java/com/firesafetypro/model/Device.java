@@ -12,11 +12,12 @@ public class Device {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "serial_number", unique = true, nullable = false)
+    @Column(name = "serial_number", nullable = false)
     private String serialNumber;
 
-    @Column(name = "device_type", nullable = false)
-    private String deviceType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "device_type_id")
+    private DeviceType deviceType;
 
     @Column(name = "description")
     private String description;
@@ -26,6 +27,10 @@ public class Device {
 
     @Column(name = "qr_signed_url")
     private String qrSignedUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "zone_id")
+    private Zone zone;
 
     @Column(name = "registered_at", nullable = false)
     private OffsetDateTime registeredAt;
@@ -48,14 +53,16 @@ public class Device {
     public void setId(UUID id) { this.id = id; }
     public String getSerialNumber() { return serialNumber; }
     public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }
-    public String getDeviceType() { return deviceType; }
-    public void setDeviceType(String deviceType) { this.deviceType = deviceType; }
+    public DeviceType getDeviceType() { return deviceType; }
+    public void setDeviceType(DeviceType deviceType) { this.deviceType = deviceType; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public String getQrCodeRef() { return qrCodeRef; }
     public void setQrCodeRef(String qrCodeRef) { this.qrCodeRef = qrCodeRef; }
     public String getQrSignedUrl() { return qrSignedUrl; }
     public void setQrSignedUrl(String qrSignedUrl) { this.qrSignedUrl = qrSignedUrl; }
+    public Zone getZone() { return zone; }
+    public void setZone(Zone zone) { this.zone = zone; }
     public OffsetDateTime getRegisteredAt() { return registeredAt; }
     public void setRegisteredAt(OffsetDateTime registeredAt) { this.registeredAt = registeredAt; }
     public UUID getRegisteredBy() { return registeredBy; }

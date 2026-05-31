@@ -8,6 +8,7 @@ interface User {
   username: string;
   email: string;
   role: string;
+  zone: string;
   isEnabled: boolean;
 }
 
@@ -20,9 +21,23 @@ const MOCK_USERS: User[] = [
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
+  const [zones, setZones] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ fullName: '', username: '', email: '', password: '' });
+  const [newUser, setNewUser] = useState({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterZone, setFilterZone] = useState('all');
+
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = filterRole === 'all' || u.role === filterRole;
+    const matchesZone = filterZone === 'all' || u.zone === filterZone;
+    return matchesSearch && matchesRole && matchesZone;
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -31,11 +46,25 @@ export default function Users() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
+      if (userData) setUserRole(userData.role);
+
+      const { data: zonesData } = await supabase.from('zones').select('*').order('name');
+      if (zonesData) setZones(zonesData);
+
+      let query = supabase
         .from('users')
-        .select('*')
+        .select('*, zones!users_zone_id_fkey(name)')
         .order('created_at', { ascending: false });
 
+      if (userData?.role === 'ROLE_ADMIN' && userData.zone_id) {
+        query = query.eq('zone_id', userData.zone_id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       
       if (data) {
@@ -45,12 +74,14 @@ export default function Users() {
           username: u.username,
           email: u.email,
           role: u.role,
+          zone: u.zones?.name || 'Global',
           isEnabled: u.is_enabled
         }));
         setUsers(mappedUsers);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      alert('Error fetching users: ' + (error.message || JSON.stringify(error)));
     } finally {
       setLoading(false);
     }
@@ -72,7 +103,9 @@ export default function Users() {
           fullName: newUser.fullName,
           username: newUser.username,
           email: newUser.email,
-          password: newUser.password
+          password: newUser.password,
+          role: newUser.role,
+          zoneId: newUser.zoneId
         })
       });
 
@@ -82,7 +115,7 @@ export default function Users() {
       }
 
       setIsModalOpen(false);
-      setNewUser({ fullName: '', username: '', email: '', password: '' });
+      setNewUser({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
       fetchUsers();
     } catch (error: any) {
       alert(error.message || 'Error registering user');
@@ -90,17 +123,26 @@ export default function Users() {
   };
 
   const handleDisable = async (id: string) => {
-    if (confirm('Are you sure you want to disable this user?')) {
+    if (confirm('Are you sure you want to permanently delete this user?')) {
       try {
-        const { error } = await supabase
-          .from('users')
-          .update({ is_enabled: false })
-          .eq('id', id);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("No active session found.");
+        
+        const response = await fetch(`http://localhost:8080/api/admin/users/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Backend returned status ${response.status}`);
+        }
           
-        if (error) throw error;
         fetchUsers();
       } catch (error: any) {
-        alert('Error disabling user');
+        alert('Error deleting user: ' + error.message);
       }
     }
   };
@@ -114,8 +156,48 @@ export default function Users() {
         </div>
         <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
           <UserPlus size={20} />
-          Register Inspector
+          Register New User
         </button>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>🔍</span>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="Search by name, username, or email..." 
+              style={{ paddingLeft: '3rem' }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <select 
+            className="form-control" 
+            style={{ width: '180px' }}
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+          >
+            <option value="all">All Roles</option>
+            <option value="ROLE_SUPERADMIN">Super Admin</option>
+            <option value="ROLE_ADMIN">Zonal Admin</option>
+            <option value="ROLE_USER">Inspector</option>
+          </select>
+          {userRole === 'ROLE_SUPERADMIN' && (
+            <select 
+              className="form-control" 
+              style={{ width: '180px' }}
+              value={filterZone}
+              onChange={(e) => setFilterZone(e.target.value)}
+            >
+              <option value="all">All Zones</option>
+              {zones.map(z => (
+                <option key={z.id} value={z.name}>{z.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       <div className="card">
@@ -127,27 +209,33 @@ export default function Users() {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Zone</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} style={{ opacity: user.isEnabled ? 1 : 0.6 }}>
                   <td style={{ fontWeight: 500 }}>{user.fullName}</td>
                   <td>@{user.username}</td>
                   <td>{user.email}</td>
                   <td>
-                    {user.role === 'ADMIN' ? (
-                      <span className="badge badge-danger" style={{ display: 'inline-flex', gap: '4px' }}>
-                        <ShieldAlert size={12} /> {user.role}
+                    {user.role === 'ROLE_SUPERADMIN' ? (
+                      <span className="badge badge-danger" style={{ display: 'inline-flex', gap: '4px', whiteSpace: 'nowrap' }}>
+                        <ShieldAlert size={12} /> SUPER ADMIN
+                      </span>
+                    ) : user.role === 'ROLE_ADMIN' ? (
+                      <span className="badge badge-warning" style={{ display: 'inline-flex', gap: '4px', whiteSpace: 'nowrap' }}>
+                        ADMIN
                       </span>
                     ) : (
-                      <span className="badge" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)' }}>
-                        {user.role}
+                      <span className="badge" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                        INSPECTOR
                       </span>
                     )}
                   </td>
+                  <td>{user.zone}</td>
                   <td>
                     {user.isEnabled ? (
                       <span className="badge badge-success">Active</span>
@@ -156,7 +244,7 @@ export default function Users() {
                     )}
                   </td>
                   <td>
-                    {user.isEnabled && user.role !== 'ADMIN' && (
+                    {user.isEnabled && user.role !== 'ROLE_SUPERADMIN' && (
                       <button className="btn btn-ghost" title="Disable User" onClick={() => handleDisable(user.id)} style={{ color: 'var(--danger)' }}>
                         <UserMinus size={18} />
                       </button>
@@ -173,7 +261,7 @@ export default function Users() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Register New Inspector</h2>
+              <h2 className="modal-title">Register New User</h2>
               <button className="btn btn-ghost" onClick={() => setIsModalOpen(false)}>✕</button>
             </div>
             <form onSubmit={handleRegister}>
@@ -218,6 +306,37 @@ export default function Users() {
                   placeholder="Min. 8 chars, 1 uppercase, 1 special"
                 />
               </div>
+              
+              {userRole === 'ROLE_SUPERADMIN' && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Role</label>
+                    <select 
+                      className="form-control" 
+                      required
+                      value={newUser.role}
+                      onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                    >
+                      <option value="ROLE_USER">Inspector (User)</option>
+                      <option value="ROLE_ADMIN">Zonal Admin</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Assign Zone</label>
+                    <select 
+                      className="form-control" 
+                      required
+                      value={newUser.zoneId}
+                      onChange={(e) => setNewUser({...newUser, zoneId: e.target.value})}
+                    >
+                      <option value="">Select a zone...</option>
+                      {zones.map(z => (
+                        <option key={z.id} value={z.id}>{z.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               <div className="modal-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Create User</button>

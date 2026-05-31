@@ -6,6 +6,7 @@ interface Device {
   id: string;
   serialNumber: string;
   deviceType: string;
+  zone: string;
   registeredAt: string;
   isActive: boolean;
   qrSignedUrl?: string;
@@ -15,11 +16,23 @@ interface Device {
 
 export default function Devices() {
   const [devices, setDevices] = useState<Device[]>([]);
+  const [deviceTypes, setDeviceTypes] = useState<any[]>([]);
+  const [zones, setZones] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newDevice, setNewDevice] = useState({ serialNumber: '', deviceType: '', description: '' });
+  const [newDevice, setNewDevice] = useState({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
   const [loading, setLoading] = useState(true);
   const [auditDevice, setAuditDevice] = useState<Device | null>(null);
   const [audits, setAudits] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('all');
+
+  const filteredDevices = devices.filter(d => {
+    const matchesSearch = d.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          d.deviceType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'all' || d.deviceType === filterType;
+    return matchesSearch && matchesType;
+  });
 
   useEffect(() => {
     fetchDevices();
@@ -28,18 +41,38 @@ export default function Devices() {
   const fetchDevices = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
+      if (userData) setUserRole(userData.role);
+
+      // Fetch reference data for dropdowns
+      const [typesRes, zonesRes] = await Promise.all([
+        supabase.from('device_types').select('*').order('name'),
+        supabase.from('zones').select('*').order('name')
+      ]);
+      if (typesRes.data) setDeviceTypes(typesRes.data);
+      if (zonesRes.data) setZones(zonesRes.data);
+
+      let query = supabase
         .from('devices')
-        .select('*')
+        .select('*, device_types(name), zones(name)')
         .order('registered_at', { ascending: false });
         
+      if (userData?.role === 'ROLE_ADMIN' && userData.zone_id) {
+        query = query.eq('zone_id', userData.zone_id);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       
       if (data) {
         const mappedDevices = data.map(d => ({
           id: d.id,
           serialNumber: d.serial_number,
-          deviceType: d.device_type,
+          deviceType: d.device_types?.name || 'Unknown',
+          zone: d.zones?.name || 'Unknown',
           registeredAt: new Date(d.registered_at).toLocaleDateString(),
           isActive: d.is_active,
           qrSignedUrl: d.qr_signed_url
@@ -80,7 +113,8 @@ export default function Devices() {
         },
         body: JSON.stringify({
           serialNumber: newDevice.serialNumber,
-          deviceType: newDevice.deviceType,
+          deviceTypeId: newDevice.deviceTypeId,
+          zoneId: newDevice.zoneId,
           description: newDevice.description
         })
       });
@@ -91,7 +125,7 @@ export default function Devices() {
       }
       
       setIsModalOpen(false);
-      setNewDevice({ serialNumber: '', deviceType: '', description: '' });
+      setNewDevice({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
       fetchDevices(); // Refresh list to see the new device with its QR code
     } catch (error: any) {
       alert(error.message || 'Error registering device');
@@ -136,12 +170,20 @@ export default function Devices() {
               className="form-control" 
               placeholder="Search by serial number or type..." 
               style={{ paddingLeft: '3rem' }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <select className="form-control" style={{ width: '200px' }}>
+          <select 
+            className="form-control" 
+            style={{ width: '200px' }}
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
             <option value="all">All Types</option>
-            <option value="extinguisher">Fire Extinguisher</option>
-            <option value="detector">Smoke Detector</option>
+            {deviceTypes.map(t => (
+              <option key={t.id} value={t.name}>{t.name}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -153,16 +195,18 @@ export default function Devices() {
               <tr>
                 <th>Serial Number</th>
                 <th>Device Type</th>
+                <th>Zone</th>
                 <th>Registration Date</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {devices.map((device) => (
+              {filteredDevices.map((device) => (
                 <tr key={device.id} style={{ opacity: device.isActive ? 1 : 0.6 }}>
                   <td style={{ fontWeight: 500 }}>{device.serialNumber}</td>
                   <td>{device.deviceType}</td>
+                  <td>{device.zone}</td>
                   <td>{device.registeredAt}</td>
                   <td>
                     {device.isActive ? (
@@ -225,16 +269,32 @@ export default function Devices() {
                 <select 
                   className="form-control" 
                   required
-                  value={newDevice.deviceType}
-                  onChange={(e) => setNewDevice({...newDevice, deviceType: e.target.value})}
+                  value={newDevice.deviceTypeId}
+                  onChange={(e) => setNewDevice({...newDevice, deviceTypeId: e.target.value})}
                 >
                   <option value="">Select a type...</option>
-                  <option value="Fire Extinguisher">Fire Extinguisher</option>
-                  <option value="Smoke Detector">Smoke Detector</option>
-                  <option value="Fire Hose">Fire Hose</option>
-                  <option value="Fire Alarm">Fire Alarm</option>
+                  {deviceTypes.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
                 </select>
               </div>
+              
+              {userRole === 'ROLE_SUPERADMIN' && (
+                <div className="form-group">
+                  <label className="form-label">Assign Zone</label>
+                  <select 
+                    className="form-control" 
+                    required
+                    value={newDevice.zoneId}
+                    onChange={(e) => setNewDevice({...newDevice, zoneId: e.target.value})}
+                  >
+                    <option value="">Select a zone...</option>
+                    {zones.map(z => (
+                      <option key={z.id} value={z.id}>{z.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Description (Optional)</label>
                 <textarea 

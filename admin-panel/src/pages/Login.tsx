@@ -34,7 +34,7 @@ export default function Login() {
 
         if (profileError) throw profileError;
 
-        if (profile?.role !== 'ROLE_ADMIN') {
+        if (profile?.role !== 'ROLE_ADMIN' && profile?.role !== 'ROLE_SUPERADMIN') {
           await supabase.auth.signOut();
           throw new Error('Access denied. Admin privileges required.');
         }

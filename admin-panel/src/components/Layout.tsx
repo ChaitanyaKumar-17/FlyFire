@@ -1,16 +1,20 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { ShieldAlert, LayoutDashboard, QrCode, Users as UsersIcon, LogOut } from 'lucide-react';
+import { ShieldAlert, LayoutDashboard, QrCode, Users as UsersIcon, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
 export default function Layout() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string>('');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate('/login');
+      } else {
+        const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+        if (data) setRole(data.role);
       }
       setLoading(false);
     });
@@ -63,6 +67,16 @@ export default function Layout() {
             <UsersIcon size={20} />
             <span>Users</span>
           </NavLink>
+
+          {role === 'ROLE_SUPERADMIN' && (
+            <NavLink 
+              to="/settings" 
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
+              <SettingsIcon size={20} />
+              <span>Settings</span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="sidebar-footer" style={{ marginTop: 'auto' }}>

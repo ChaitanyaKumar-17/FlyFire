@@ -36,6 +36,10 @@ public class User {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "zone_id")
+    private Zone zone;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
@@ -60,4 +64,6 @@ public class User {
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public Zone getZone() { return zone; }
+    public void setZone(Zone zone) { this.zone = zone; }
 }
