@@ -1,6 +1,8 @@
 package com.firesafetypro.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -20,8 +22,10 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false)
-    private String role = "ROLE_USER";
+    private UserRole role = UserRole.ROLE_USER;
 
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = true;
@@ -48,8 +52,8 @@ public class User {
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
     public Boolean getIsEnabled() { return isEnabled; }
     public void setIsEnabled(Boolean isEnabled) { this.isEnabled = isEnabled; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

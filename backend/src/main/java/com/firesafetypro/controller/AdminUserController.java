@@ -47,7 +47,7 @@ public class AdminUserController {
             user.setEmail(email);
             user.setUsername(username);
             user.setFullName(fullName);
-            user.setRole(role);
+            user.setRole(com.firesafetypro.model.UserRole.ROLE_USER);
             user.setIsEnabled(true);
 
             String creatorId = jwt.getClaimAsString("sub");

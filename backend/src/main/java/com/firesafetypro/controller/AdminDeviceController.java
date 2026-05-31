@@ -59,8 +59,8 @@ public class AdminDeviceController {
             String filename = device.getId().toString() + ".png";
             storageService.uploadFile("qrcodes", filename, qrImage, "image/png");
 
-            // 4. Generate 10-year signed URL
-            String signedUrl = storageService.createSignedUrl("qrcodes", filename, 315360000);
+            // 4. Generate 50-year signed URL (1577880000 seconds)
+            String signedUrl = storageService.createSignedUrl("qrcodes", filename, 1577880000);
 
             // 5. Update device with storage ref and signed URL
             device.setQrCodeRef("qrcodes/" + filename);
