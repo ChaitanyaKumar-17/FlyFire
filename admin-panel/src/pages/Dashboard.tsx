@@ -1,6 +1,68 @@
+import { useState, useEffect } from 'react';
 import { QrCode, ShieldCheck, AlertTriangle, Users } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    totalDevices: 0,
+    totalInspections: 0,
+    overdue: 0, // Mocked for now until we have scheduled dates
+    activeInspectors: 0
+  });
+  const [recentInspections, setRecentInspections] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // 1. Fetch total devices
+      const { count: devicesCount } = await supabase
+        .from('devices')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // 2. Fetch total inspections
+      const { count: inspectionsCount } = await supabase
+        .from('inspections')
+        .select('*', { count: 'exact', head: true });
+
+      // 3. Fetch active inspectors
+      const { count: inspectorsCount } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'ROLE_USER')
+        .eq('is_enabled', true);
+
+      // 4. Fetch recent inspections (Join with devices and users)
+      const { data: recentInsps } = await supabase
+        .from('inspections')
+        .select(`
+          id,
+          status,
+          created_at,
+          devices ( serial_number, device_type ),
+          users ( full_name )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      setStats({
+        totalDevices: devicesCount || 0,
+        totalInspections: inspectionsCount || 0,
+        overdue: 0,
+        activeInspectors: inspectorsCount || 0
+      });
+
+      if (recentInsps) {
+        setRecentInspections(recentInsps);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -16,8 +78,8 @@ export default function Dashboard() {
             <QrCode size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">1,248</div>
-            <div className="stat-label">Total Devices</div>
+            <div className="stat-value">{stats.totalDevices}</div>
+            <div className="stat-label">Total Active Devices</div>
           </div>
         </div>
         
@@ -26,8 +88,8 @@ export default function Dashboard() {
             <ShieldCheck size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">1,105</div>
-            <div className="stat-label">Recently Inspected</div>
+            <div className="stat-value">{stats.totalInspections}</div>
+            <div className="stat-label">Total Inspections</div>
           </div>
         </div>
         
@@ -36,7 +98,7 @@ export default function Dashboard() {
             <AlertTriangle size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">143</div>
+            <div className="stat-value">{stats.overdue}</div>
             <div className="stat-label">Overdue for Inspection</div>
           </div>
         </div>
@@ -46,7 +108,7 @@ export default function Dashboard() {
             <Users size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">42</div>
+            <div className="stat-value">{stats.activeInspectors}</div>
             <div className="stat-label">Active Inspectors</div>
           </div>
         </div>
@@ -66,17 +128,28 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <tr key={i}>
-                  <td style={{ fontWeight: 500 }}>SN-{10000 + i * 23}</td>
-                  <td>Fire Extinguisher</td>
-                  <td>John Inspector</td>
-                  <td>Today, 10:{i}4 AM</td>
+              {recentInspections.map((insp) => (
+                <tr key={insp.id}>
+                  <td style={{ fontWeight: 500 }}>{insp.devices?.serial_number || 'Unknown'}</td>
+                  <td>{insp.devices?.device_type || 'Unknown'}</td>
+                  <td>{insp.users?.full_name || 'Unknown'}</td>
+                  <td>{new Date(insp.created_at).toLocaleString()}</td>
                   <td>
-                    <span className="badge badge-success">Passed</span>
+                    {insp.status === 'PASS' ? (
+                      <span className="badge badge-success">Passed</span>
+                    ) : (
+                      <span className="badge badge-danger">Failed</span>
+                    )}
                   </td>
                 </tr>
               ))}
+              {recentInspections.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    No recent inspections found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

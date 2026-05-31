@@ -8,20 +8,18 @@ interface Device {
   deviceType: string;
   registeredAt: string;
   isActive: boolean;
+  qrSignedUrl?: string;
 }
 
-const MOCK_DEVICES: Device[] = [
-  { id: '1', serialNumber: 'FE-0012A', deviceType: 'Fire Extinguisher', registeredAt: '2026-05-20', isActive: true },
-  { id: '2', serialNumber: 'SD-9981B', deviceType: 'Smoke Detector', registeredAt: '2026-05-21', isActive: true },
-  { id: '3', serialNumber: 'FH-4422C', deviceType: 'Fire Hose', registeredAt: '2026-05-22', isActive: true },
-  { id: '4', serialNumber: 'FA-1100D', deviceType: 'Fire Alarm', registeredAt: '2026-05-23', isActive: false },
-];
+// Mock data removed in favor of live DB
 
 export default function Devices() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDevice, setNewDevice] = useState({ serialNumber: '', deviceType: '', description: '' });
   const [loading, setLoading] = useState(true);
+  const [auditDevice, setAuditDevice] = useState<Device | null>(null);
+  const [audits, setAudits] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDevices();
@@ -43,7 +41,8 @@ export default function Devices() {
           serialNumber: d.serial_number,
           deviceType: d.device_type,
           registeredAt: new Date(d.registered_at).toLocaleDateString(),
-          isActive: d.is_active
+          isActive: d.is_active,
+          qrSignedUrl: d.qr_signed_url
         }));
         setDevices(mappedDevices);
       }
@@ -52,6 +51,16 @@ export default function Devices() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchAudits = async (device: Device) => {
+    setAuditDevice(device);
+    const { data } = await supabase
+      .from('inspections')
+      .select('*, users(full_name)')
+      .eq('device_id', device.id)
+      .order('created_at', { ascending: false });
+    setAudits(data || []);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -164,10 +173,19 @@ export default function Devices() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-ghost" title="Download QR" disabled={!device.isActive}>
+                      <button 
+                        className="btn btn-ghost" 
+                        title="Download QR" 
+                        disabled={!device.isActive || !device.qrSignedUrl}
+                        onClick={() => window.open(device.qrSignedUrl, '_blank')}
+                      >
                         <Download size={18} />
                       </button>
-                      <button className="btn btn-ghost" title="View Audit History">
+                      <button 
+                        className="btn btn-ghost" 
+                        title="View Audit History"
+                        onClick={() => fetchAudits(device)}
+                      >
                         <History size={18} />
                       </button>
                       {device.isActive && (
@@ -231,6 +249,52 @@ export default function Devices() {
                 <button type="submit" className="btn btn-primary">Register Device</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {auditDevice && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Audit History: {auditDevice.serialNumber}</h2>
+              <button className="btn btn-ghost" onClick={() => setAuditDevice(null)}>✕</button>
+            </div>
+            <div className="table-container" style={{ marginTop: '1rem' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Inspector</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {audits.map((a) => (
+                    <tr key={a.id}>
+                      <td>{new Date(a.created_at).toLocaleString()}</td>
+                      <td>{a.users?.full_name || 'Unknown'}</td>
+                      <td>
+                        {a.status === 'PASS' ? (
+                          <span className="badge badge-success">Passed</span>
+                        ) : (
+                          <span className="badge badge-danger">Failed</span>
+                        )}
+                      </td>
+                      <td>{a.notes || '-'}</td>
+                    </tr>
+                  ))}
+                  {audits.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        No audit history found for this device.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
