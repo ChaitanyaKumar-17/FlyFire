@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserPlus, UserMinus, ShieldAlert } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -18,28 +19,69 @@ const MOCK_USERS: User[] = [
 ];
 
 export default function Users() {
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const [users, setUsers] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ fullName: '', username: '', email: '', password: '' });
+  const [loading, setLoading] = useState(true);
 
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    const user: User = {
-      id: Math.random().toString(),
-      fullName: newUser.fullName,
-      username: newUser.username,
-      email: newUser.email,
-      role: 'USER',
-      isEnabled: true,
-    };
-    setUsers([...users, user]);
-    setIsModalOpen(false);
-    setNewUser({ fullName: '', username: '', email: '', password: '' });
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      if (data) {
+        const mappedUsers = data.map(u => ({
+          id: u.id,
+          fullName: u.full_name,
+          username: u.username,
+          email: u.email,
+          role: u.role,
+          isEnabled: u.is_enabled
+        }));
+        setUsers(mappedUsers);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDisable = (id: string) => {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Create user via Supabase Auth admin API (Usually requires service_role key on backend)
+      // For this frontend demo without the backend, we cannot directly create another user in Auth while logged in
+      // So we will just alert the user that this requires the backend
+      alert('User registration requires the backend API to create Supabase Auth users securely. This UI is ready for the backend integration.');
+      setIsModalOpen(false);
+    } catch (error: any) {
+      alert(error.message || 'Error registering user');
+    }
+  };
+
+  const handleDisable = async (id: string) => {
     if (confirm('Are you sure you want to disable this user?')) {
-      setUsers(users.map(u => u.id === id ? { ...u, isEnabled: false } : u));
+      try {
+        const { error } = await supabase
+          .from('users')
+          .update({ is_enabled: false })
+          .eq('id', id);
+          
+        if (error) throw error;
+        fetchUsers();
+      } catch (error: any) {
+        alert('Error disabling user');
+      }
     }
   };
 

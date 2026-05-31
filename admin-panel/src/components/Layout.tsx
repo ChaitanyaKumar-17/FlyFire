@@ -1,12 +1,35 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { ShieldAlert, LayoutDashboard, QrCode, Users as UsersIcon, LogOut } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useEffect, useState } from 'react';
 
 export default function Layout() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate('/login');
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        navigate('/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/login');
   };
+
+  if (loading) return null;
 
   return (
     <div className="app-container">

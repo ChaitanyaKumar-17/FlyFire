@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Download, Trash2, Search, History } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface Device {
   id: string;
@@ -17,27 +18,77 @@ const MOCK_DEVICES: Device[] = [
 ];
 
 export default function Devices() {
-  const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDevice, setNewDevice] = useState({ serialNumber: '', deviceType: '', description: '' });
+  const [loading, setLoading] = useState(true);
 
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    const device: Device = {
-      id: Math.random().toString(),
-      serialNumber: newDevice.serialNumber,
-      deviceType: newDevice.deviceType,
-      registeredAt: new Date().toISOString().split('T')[0],
-      isActive: true,
-    };
-    setDevices([device, ...devices]);
-    setIsModalOpen(false);
-    setNewDevice({ serialNumber: '', deviceType: '', description: '' });
+  useEffect(() => {
+    fetchDevices();
+  }, []);
+
+  const fetchDevices = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('devices')
+        .select('*')
+        .order('registered_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      if (data) {
+        const mappedDevices = data.map(d => ({
+          id: d.id,
+          serialNumber: d.serial_number,
+          deviceType: d.device_type,
+          registeredAt: new Date(d.registered_at).toLocaleDateString(),
+          isActive: d.is_active
+        }));
+        setDevices(mappedDevices);
+      }
+    } catch (error) {
+      console.error('Error fetching devices:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { error } = await supabase.from('devices').insert([{
+        serial_number: newDevice.serialNumber,
+        device_type: newDevice.deviceType,
+        description: newDevice.description,
+        registered_by: userData.user?.id
+      }]);
+
+      if (error) throw error;
+      
+      setIsModalOpen(false);
+      setNewDevice({ serialNumber: '', deviceType: '', description: '' });
+      fetchDevices(); // Refresh list
+    } catch (error: any) {
+      alert(error.message || 'Error registering device');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to decommission this device?')) {
-      setDevices(devices.map(d => d.id === id ? { ...d, isActive: false } : d));
+      try {
+        const { error } = await supabase
+          .from('devices')
+          .update({ is_active: false })
+          .eq('id', id);
+          
+        if (error) throw error;
+        fetchDevices();
+      } catch (error: any) {
+        alert('Error decommissioning device');
+      }
     }
   };
 

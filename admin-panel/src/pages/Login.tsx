@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, LogIn } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -8,14 +9,43 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Mock authentication
-    setTimeout(() => {
+    setError(null);
+    
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password,
+      });
+
+      if (signInError) throw signInError;
+
+      // Check if user is admin
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        if (profile?.role !== 'ROLE_ADMIN') {
+          await supabase.auth.signOut();
+          throw new Error('Access denied. Admin privileges required.');
+        }
+
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to authenticate');
+    } finally {
       setLoading(false);
-      navigate('/dashboard');
-    }, 800);
+    }
   };
 
   return (
@@ -28,6 +58,12 @@ export default function Login() {
           <h1 className="page-title" style={{ fontSize: '1.5rem' }}>FireSafetyPro Admin</h1>
           <p className="page-description">Sign in to manage devices and inspections</p>
         </div>
+
+        {error && (
+          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.875rem' }}>
+            {error}
+          </div>
+        )}
         
         <form onSubmit={handleLogin}>
           <div className="form-group">

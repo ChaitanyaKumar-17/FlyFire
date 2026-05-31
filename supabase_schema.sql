@@ -43,6 +43,20 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inspections ENABLE ROW LEVEL SECURITY;
 
+-- 5.5 Create secure function to check admin status
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.users
+    WHERE id = auth.uid() AND role = 'ROLE_ADMIN'
+  );
+$$;
+
 -- 6. Create RLS Policies
 
 -- Devices Policies
@@ -56,9 +70,7 @@ CREATE POLICY "Users can view active devices" ON public.devices
 
 -- ADMIN: Can do everything
 CREATE POLICY "Admins have full access to devices" ON public.devices
-  FOR ALL TO authenticated USING (
-    (SELECT role FROM public.users WHERE id = auth.uid()) = 'ROLE_ADMIN'
-  );
+  FOR ALL TO authenticated USING ( public.is_admin() );
 
 -- Inspections Policies
 -- PUBLIC: Can view only the latest inspection (handled partially in queries, but we allow SELECT)
@@ -78,18 +90,13 @@ CREATE POLICY "Users can insert own inspections" ON public.inspections
 
 -- ADMIN: Can SELECT all and INSERT
 CREATE POLICY "Admins can view and insert inspections" ON public.inspections
-  FOR ALL TO authenticated USING (
-    (SELECT role FROM public.users WHERE id = auth.uid()) = 'ROLE_ADMIN'
-  ) WITH CHECK (
-    (SELECT role FROM public.users WHERE id = auth.uid()) = 'ROLE_ADMIN'
-  );
+  FOR ALL TO authenticated USING ( public.is_admin() ) 
+  WITH CHECK ( public.is_admin() );
 
 -- Users Policies
 -- ADMIN: Can do everything except DELETE (soft-delete via is_enabled is used instead)
 CREATE POLICY "Admins can manage users" ON public.users
-  FOR ALL TO authenticated USING (
-    (SELECT role FROM public.users WHERE id = auth.uid()) = 'ROLE_ADMIN'
-  );
+  FOR ALL TO authenticated USING ( public.is_admin() );
 
 -- USER: Can read their own data
 CREATE POLICY "Users can view own profile" ON public.users
