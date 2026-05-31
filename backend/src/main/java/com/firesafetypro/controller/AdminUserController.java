@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/users")
+@CrossOrigin("*")
 public class AdminUserController {
 
     private final UserRepository userRepository;
@@ -24,7 +25,7 @@ public class AdminUserController {
     }
 
     @PostMapping
-    public ResponseEntity<?> registerUser(@RequestBody Map<String, String> payload, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> registerUser(@RequestBody Map<String, String> payload, @AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
         String email = payload.get("email");
         String username = payload.get("username");
         String fullName = payload.get("fullName");

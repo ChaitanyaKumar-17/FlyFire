@@ -59,11 +59,31 @@ export default function Users() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Create user via Supabase Auth admin API (Usually requires service_role key on backend)
-      // For this frontend demo without the backend, we cannot directly create another user in Auth while logged in
-      // So we will just alert the user that this requires the backend
-      alert('User registration requires the backend API to create Supabase Auth users securely. This UI is ready for the backend integration.');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session found.");
+
+      const response = await fetch('http://localhost:8080/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          fullName: newUser.fullName,
+          username: newUser.username,
+          email: newUser.email,
+          password: newUser.password
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Backend returned status ${response.status}`);
+      }
+
       setIsModalOpen(false);
+      setNewUser({ fullName: '', username: '', email: '', password: '' });
+      fetchUsers();
     } catch (error: any) {
       alert(error.message || 'Error registering user');
     }

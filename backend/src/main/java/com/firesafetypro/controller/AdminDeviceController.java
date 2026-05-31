@@ -14,6 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/devices")
+@CrossOrigin("*")
 public class AdminDeviceController {
 
     private final DeviceRepository deviceRepository;
@@ -27,7 +28,7 @@ public class AdminDeviceController {
     }
 
     @PostMapping
-    public ResponseEntity<?> registerDevice(@RequestBody Map<String, String> payload, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> registerDevice(@RequestBody Map<String, String> payload, @AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
         String serialNumber = payload.get("serialNumber");
         String deviceType = payload.get("deviceType");
         String description = payload.get("description");
@@ -58,8 +59,12 @@ public class AdminDeviceController {
             String filename = device.getId().toString() + ".png";
             storageService.uploadFile("qrcodes", filename, qrImage, "image/png");
 
-            // 4. Update device with storage ref
+            // 4. Generate 10-year signed URL
+            String signedUrl = storageService.createSignedUrl("qrcodes", filename, 315360000);
+
+            // 5. Update device with storage ref and signed URL
             device.setQrCodeRef("qrcodes/" + filename);
+            device.setQrSignedUrl(signedUrl);
             device = deviceRepository.save(device);
 
             return ResponseEntity.ok(device);

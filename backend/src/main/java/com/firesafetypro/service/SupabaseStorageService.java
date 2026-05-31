@@ -45,4 +45,28 @@ public class SupabaseStorageService {
             throw new RuntimeException("Failed to upload file to Supabase Storage: " + response.body());
         }
     }
+
+    public String createSignedUrl(String bucket, String path, int expiresInSeconds) throws Exception {
+        String endpoint = supabaseUrl + "/storage/v1/object/sign/" + bucket + "/" + path;
+        String jsonPayload = "{\"expiresIn\": " + expiresInSeconds + "}";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("apikey", serviceRoleKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("Failed to create signed URL: " + response.body());
+        }
+
+        // Parse response to get signedURL
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        java.util.Map<String, String> map = mapper.readValue(response.body(), java.util.Map.class);
+        return supabaseUrl + "/storage/v1" + map.get("signedURL");
+    }
 }

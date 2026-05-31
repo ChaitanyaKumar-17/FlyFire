@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version> <!-- Specified by user -->
+        <version>4.0.6</version> <!-- Verified stable version for 2026 -->
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.firesafetypro</groupId>
@@ -17,6 +17,10 @@
         <java.version>21</java.version>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

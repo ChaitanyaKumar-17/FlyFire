@@ -57,20 +57,33 @@ export default function Devices() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      const { error } = await supabase.from('devices').insert([{
-        serial_number: newDevice.serialNumber,
-        device_type: newDevice.deviceType,
-        description: newDevice.description,
-        registered_by: userData.user?.id
-      }]);
+      // 1. Get the current active session for the JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session found.");
 
-      if (error) throw error;
+      // 2. Call the Spring Boot backend instead of inserting directly into Supabase.
+      // The backend is responsible for creating the QR code and uploading it!
+      const response = await fetch('http://localhost:8080/api/admin/devices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` // Pass JWT for Spring Security
+        },
+        body: JSON.stringify({
+          serialNumber: newDevice.serialNumber,
+          deviceType: newDevice.deviceType,
+          description: newDevice.description
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Backend returned status ${response.status}`);
+      }
       
       setIsModalOpen(false);
       setNewDevice({ serialNumber: '', deviceType: '', description: '' });
-      fetchDevices(); // Refresh list
+      fetchDevices(); // Refresh list to see the new device with its QR code
     } catch (error: any) {
       alert(error.message || 'Error registering device');
     }
