@@ -23,6 +23,7 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [zones, setZones] = useState<any[]>([]);
   const [userRole, setUserRole] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,8 @@ export default function Users() {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      
+      setCurrentUserId(session.user.id);
       
       const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
       if (userData) setUserRole(userData.role);
@@ -244,7 +247,7 @@ export default function Users() {
                     )}
                   </td>
                   <td>
-                    {user.isEnabled && user.role !== 'ROLE_SUPERADMIN' && (
+                    {user.isEnabled && user.role !== 'ROLE_SUPERADMIN' && user.id !== currentUserId && (
                       <button className="btn btn-ghost" title="Disable User" onClick={() => handleDisable(user.id)} style={{ color: 'var(--danger)' }}>
                         <UserMinus size={18} />
                       </button>

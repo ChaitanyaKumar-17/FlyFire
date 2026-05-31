@@ -148,6 +148,22 @@ export default function Devices() {
     }
   };
 
+  const handlePermanentDelete = async (id: string) => {
+    if (confirm('Are you sure you want to permanently delete this device? This will permanently delete all inspection history tied to it. This action cannot be undone.')) {
+      try {
+        const { error } = await supabase
+          .from('devices')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        fetchDevices();
+      } catch (error: any) {
+        alert('Error permanently deleting device: ' + error.message);
+      }
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -232,11 +248,15 @@ export default function Devices() {
                       >
                         <History size={18} />
                       </button>
-                      {device.isActive && (
+                      {device.isActive ? (
                         <button className="btn btn-ghost" title="Decommission" onClick={() => handleDelete(device.id)} style={{ color: 'var(--danger)' }}>
                           <Trash2 size={18} />
                         </button>
-                      )}
+                      ) : userRole === 'ROLE_SUPERADMIN' ? (
+                        <button className="btn btn-ghost" title="Permanently Delete" onClick={() => handlePermanentDelete(device.id)} style={{ color: 'var(--danger)' }}>
+                          <Trash2 size={18} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
