@@ -1,13 +1,13 @@
-package com.dsvs;
+package com.firesafetypro;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class DsvsApplication {
+public class FireSafetyProApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(DsvsApplication.class, args);
+        SpringApplication.run(FireSafetyProApplication.class, args);
     }
 
 }

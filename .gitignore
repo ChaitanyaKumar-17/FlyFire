@@ -1,0 +1,131 @@
+# ==========================================
+# Device Status Verification System (DSVS)
+# Unified .gitignore for React Native, React Web, & Spring Boot
+# ==========================================
+
+# ------------------------------------------
+# 1. Environment Variables & Secrets (CRITICAL)
+# ------------------------------------------
+# Never commit your Supabase service_role keys or database credentials!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env.*
+supabase/functions/.env
+.application.properties.local
+.application.yml.local
+
+# ------------------------------------------
+# 2. Node.js & Frontends (React Native & Web Admin)
+# ------------------------------------------
+node_modules/
+jspm_packages/
+.npm
+.eslintcache
+.stylelintcache
+.prettiercache
+.parcel-cache
+.turbo
+.vercel
+dist/
+build/
+
+# Expo / React Native specific
+.expo/
+.expo-shared/
+web-build/
+artifacts/
+
+# ------------------------------------------
+# 3. Android Specific (React Native Mobile)
+# ------------------------------------------
+android/app/build/
+android/.gradle/
+android/local.properties
+android/GeneratedPluginRegistrant.java
+android/assets/snapshots/
+*.apk
+*.aar
+*.apks
+*.aab
+
+# Keystore files (Keep your signing keys private)
+*.keystore
+*.jks
+!android/app/debug.keystore
+
+# ------------------------------------------
+# 4. iOS Specific (React Native Mobile)
+# ------------------------------------------
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/.xcode.env.local
+ios/**/*.Package.resolved
+
+# Xcode user settings and workspace state
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+xcshareddata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcworkspace
+
+# CocoaPods
+Podfile.lock
+
+# ------------------------------------------
+# 5. Spring Boot & Java Backend
+# ------------------------------------------
+# Target directories (Build output)
+target/
+build/
+out/
+
+# Maven/Gradle execution files
+.gradle/
+**/gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.properties
+
+# Log files
+*.log
+logs/
+
+# ------------------------------------------
+# 6. IDEs & Editors (VS Code, IntelliJ, Eclipse)
+# ------------------------------------------
+# JetBrains (IntelliJ IDEA, WebStorm)
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+.history/
+
+# Eclipse
+.metadata/
+.classpath
+.project
+.settings/
+*.launch
+
+# OS Generated
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
