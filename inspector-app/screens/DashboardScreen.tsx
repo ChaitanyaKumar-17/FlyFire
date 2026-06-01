@@ -13,9 +13,11 @@ export default function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const [isFirstLoginPrompt, setIsFirstLoginPrompt] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -62,13 +64,20 @@ export default function DashboardScreen() {
   };
 
   const handleUpdatePassword = async () => {
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters.');
+    setErrorMessage('');
+    
+    if (!oldPassword) {
+      setErrorMessage('Please enter your current temporary password.');
       return;
     }
     
-    if (newPassword === TempStorage.password) {
-      Alert.alert('Update Failed', 'New password must be strictly different from your temporary password.');
+    if (newPassword.length < 6) {
+      setErrorMessage('New password must be at least 6 characters.');
+      return;
+    }
+    
+    if (newPassword === oldPassword) {
+      setErrorMessage('New password must be strictly different from your temporary password.');
       return;
     }
 
@@ -77,9 +86,9 @@ export default function DashboardScreen() {
     
     if (updateError) {
       if (updateError.message.toLowerCase().includes('different') || updateError.message.toLowerCase().includes('same')) {
-        Alert.alert('Update Failed', 'New password must be different from your temporary password.');
+        setErrorMessage('New password must be different from your temporary password.');
       } else {
-        Alert.alert('Update Failed', updateError.message);
+        setErrorMessage(updateError.message);
       }
       setIsUpdating(false);
       return;
@@ -114,6 +123,18 @@ export default function DashboardScreen() {
             <Text style={styles.firstLoginSubtitle}>
               You are using a temporary password. Please update your password to continue using the inspector portal.
             </Text>
+            
+            {errorMessage ? <Text style={{ color: '#EF4444', marginBottom: 12, fontWeight: '500' }}>{errorMessage}</Text> : null}
+
+            <Text style={styles.label}>Current Temporary Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter current password"
+              placeholderTextColor="#9CA3AF"
+              secureTextEntry
+              value={oldPassword}
+              onChangeText={setOldPassword}
+            />
             
             <Text style={styles.label}>New Password</Text>
             <TextInput
