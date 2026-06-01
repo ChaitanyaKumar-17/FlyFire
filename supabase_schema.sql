@@ -14,7 +14,8 @@ CREATE TABLE public.users (
   is_enabled BOOLEAN DEFAULT true NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   created_by UUID REFERENCES public.users(id),
-  zone_id UUID
+  zone_id UUID,
+  is_first_login BOOLEAN DEFAULT true NOT NULL
 );
 
 -- 3. Create Zones Table

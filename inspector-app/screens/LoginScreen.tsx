@@ -6,6 +6,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isFirstLoginPrompt, setIsFirstLoginPrompt] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -14,7 +17,7 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -22,7 +25,50 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Login Failed', error.message);
       setLoading(false);
+      return;
     }
+
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('is_first_login')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile?.is_first_login) {
+        setIsFirstLoginPrompt(true);
+        setUserId(data.user.id);
+        setLoading(false);
+      }
+      // If not first login, App.tsx's onAuthStateChange handles the navigation
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    
+    if (updateError) {
+      Alert.alert('Update Failed', updateError.message);
+      setLoading(false);
+      return;
+    }
+
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({ is_first_login: false })
+      .eq('id', userId);
+
+    if (dbError) {
+      Alert.alert('Error', 'Could not update user record.');
+    }
+    // Auth state listener handles navigation
+    setLoading(false);
   };
 
   return (
@@ -37,38 +83,70 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.formContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="inspector@firesafetypro.local"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
+          {!isFirstLoginPrompt ? (
+            <>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="inspector@firesafetypro.local"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
 
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
 
-          <TouchableOpacity 
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.label, { marginBottom: 16, color: '#6B7280', fontWeight: 'normal' }]}>
+                You are using a temporary password. Please update your password to continue.
+              </Text>
+              
+              <Text style={styles.label}>New Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter new password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+
+              <TouchableOpacity 
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+                onPress={handleUpdatePassword}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Update Password</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <View style={styles.footerContainer}>
