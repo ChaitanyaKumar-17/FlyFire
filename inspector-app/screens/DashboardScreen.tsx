@@ -2,9 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { LogOut, QrCode } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
 
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -28,8 +32,7 @@ export default function DashboardScreen() {
   };
 
   const handleScan = () => {
-    // Navigate to scanner screen (to be implemented)
-    alert("Scanner opening soon!");
+    navigation.navigate('Scanner');
   };
 
   return (
