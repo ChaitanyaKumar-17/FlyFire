@@ -5,7 +5,7 @@ import { LogOut, QrCode } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { tempPassword } from './LoginScreen';
+import { TempStorage } from './LoginScreen';
 
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
@@ -67,7 +67,7 @@ export default function DashboardScreen() {
       return;
     }
     
-    if (newPassword === tempPassword) {
+    if (newPassword === TempStorage.password) {
       Alert.alert('Update Failed', 'New password must be strictly different from your temporary password.');
       return;
     }
