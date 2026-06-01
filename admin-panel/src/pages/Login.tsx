@@ -64,7 +64,12 @@ export default function Login() {
     setError(null);
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) throw updateError;
+      if (updateError) {
+        if (updateError.message.toLowerCase().includes('different') || updateError.message.toLowerCase().includes('same')) {
+          throw new Error('New password must be different from your temporary password.');
+        }
+        throw updateError;
+      }
       
       const { error: dbError } = await supabase.from('users').update({ is_first_login: false }).eq('id', userId);
       if (dbError) throw dbError;

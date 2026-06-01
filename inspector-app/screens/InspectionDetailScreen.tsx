@@ -86,8 +86,13 @@ export default function InspectionDetailScreen() {
       if (error) throw error;
 
       Alert.alert('Success', 'Inspection recorded successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('Dashboard') }
-      ]);
+        { 
+          text: 'OK', 
+          onPress: () => {
+            navigation.navigate('Dashboard' as never);
+          }
+        }
+      ], { cancelable: false });
     } catch (error: any) {
       Alert.alert('Error', 'Failed to submit inspection. ' + error.message);
     } finally {

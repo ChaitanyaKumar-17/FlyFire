@@ -70,7 +70,11 @@ export default function DashboardScreen() {
     const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
     
     if (updateError) {
-      Alert.alert('Update Failed', updateError.message);
+      if (updateError.message.toLowerCase().includes('different') || updateError.message.toLowerCase().includes('same')) {
+        Alert.alert('Update Failed', 'New password must be different from your temporary password.');
+      } else {
+        Alert.alert('Update Failed', updateError.message);
+      }
       setIsUpdating(false);
       return;
     }
