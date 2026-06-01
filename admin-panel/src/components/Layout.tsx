@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { ShieldAlert, LayoutDashboard, QrCode, Users as UsersIcon, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { ShieldAlert, LayoutDashboard, QrCode, Users as UsersIcon, LogOut, Settings as SettingsIcon, History } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
@@ -66,6 +66,14 @@ export default function Layout() {
           >
             <UsersIcon size={20} />
             <span>Users</span>
+          </NavLink>
+
+          <NavLink 
+            to="/inspections" 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          >
+            <History size={20} />
+            <span>Inspections</span>
           </NavLink>
 
           {role === 'ROLE_SUPERADMIN' && (

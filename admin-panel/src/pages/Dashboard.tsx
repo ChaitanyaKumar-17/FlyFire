@@ -27,11 +27,11 @@ export default function Dashboard() {
       let inspectorsQuery = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'ROLE_USER').eq('is_enabled', true);
       let recentQuery = supabase.from('inspections').select(`
           id,
-          status,
-          created_at,
+          remark,
+          inspected_at,
           devices!inner ( serial_number, zone_id, device_types ( name ) ),
           users ( full_name )
-        `).order('created_at', { ascending: false }).limit(5);
+        `).order('inspected_at', { ascending: false }).limit(5);
 
       if (isZonalAdmin) {
         devicesQuery = devicesQuery.eq('zone_id', userData.zone_id);
@@ -124,13 +124,9 @@ export default function Dashboard() {
                   <td style={{ fontWeight: 500 }}>{insp.devices?.serial_number || 'Unknown'}</td>
                   <td>{insp.devices?.device_types?.name || 'Unknown'}</td>
                   <td>{insp.users?.full_name || 'Unknown'}</td>
-                  <td>{new Date(insp.created_at).toLocaleString()}</td>
+                  <td>{new Date(insp.inspected_at).toLocaleString()}</td>
                   <td>
-                    {insp.status === 'PASS' ? (
-                      <span className="badge badge-success">Passed</span>
-                    ) : (
-                      <span className="badge badge-danger">Failed</span>
-                    )}
+                    <span className="badge badge-success">Completed</span>
                   </td>
                 </tr>
               ))}

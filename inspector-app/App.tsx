@@ -10,11 +10,13 @@ import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import ScannerScreen from './screens/ScannerScreen';
 import InspectionDetailScreen from './screens/InspectionDetailScreen';
+import HistoryScreen from './screens/HistoryScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   Dashboard: undefined;
   Scanner: undefined;
+  History: undefined;
   InspectionDetail: { deviceId: string };
 };
 
@@ -54,6 +56,7 @@ export default function App() {
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Scanner" component={ScannerScreen} />
+            <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="InspectionDetail" component={InspectionDetailScreen} />
           </>
         ) : (

@@ -8,6 +8,7 @@ import { RootStackParamList } from '../App';
 
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
+  const [recentInspections, setRecentInspections] = useState<any[]>([]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
@@ -22,6 +23,14 @@ export default function DashboardScreen() {
         if (data) {
           setUserName(data.full_name);
         }
+        
+        const { data: inspections } = await supabase
+          .from('inspections')
+          .select('id, remark, inspected_at, devices(serial_number)')
+          .eq('inspector_id', session.user.id)
+          .order('inspected_at', { ascending: false })
+          .limit(5);
+        if (inspections) setRecentInspections(inspections);
       }
     };
     fetchUser();
@@ -56,6 +65,31 @@ export default function DashboardScreen() {
             <QrCode size={24} color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={styles.scanButtonText}>Scan QR Code</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.recentSection}>
+          <View style={styles.recentHeader}>
+            <Text style={styles.recentTitle}>Recent Inspections</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('History' as never)}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {recentInspections.length > 0 ? (
+            recentInspections.map((insp) => (
+              <View key={insp.id} style={styles.inspectionItem}>
+                <View style={styles.inspectionItemHeader}>
+                  <Text style={styles.deviceSerial}>{insp.devices?.serial_number}</Text>
+                  <Text style={styles.inspectionDate}>
+                    {new Date(insp.inspected_at).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Text style={styles.inspectionRemark} numberOfLines={2}>{insp.remark}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noHistoryText}>No recent inspections.</Text>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -143,5 +177,68 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  recentSection: {
+    marginTop: 24,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  recentTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  viewAllText: {
+    color: '#2563EB',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  inspectionItem: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
+  },
+  inspectionItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  deviceSerial: {
+    fontWeight: '600',
+    color: '#111827',
+    fontSize: 14,
+  },
+  inspectionDate: {
+    color: '#6B7280',
+    fontSize: 12,
+  },
+  inspectionRemark: {
+    color: '#4B5563',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noHistoryText: {
+    color: '#6B7280',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 16,
   },
 });
