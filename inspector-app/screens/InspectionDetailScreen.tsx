@@ -47,7 +47,7 @@ export default function InspectionDetailScreen() {
           .eq('device_id', deviceId)
           .order('inspected_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
         
         if (inspectionData) {
           setLastInspection(inspectionData);

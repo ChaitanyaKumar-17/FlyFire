@@ -8,6 +8,7 @@ export default function HistoryScreen() {
   const navigation = useNavigation();
   const [inspections, setInspections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     fetchHistory();
@@ -17,16 +18,28 @@ export default function HistoryScreen() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
 
-    const { data } = await supabase
+    const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
+    if (userData) setUserRole(userData.role);
+
+    let query = supabase
       .from('inspections')
       .select(`
         id,
         remark,
         inspected_at,
-        devices(serial_number, device_types(name), zones(name))
+        devices!inner(serial_number, zone_id, device_types(name), zones(name))
       `)
-      .eq('inspector_id', session.user.id)
       .order('inspected_at', { ascending: false });
+
+    if (userData?.role === 'ROLE_SUPERADMIN') {
+      // no filter, fetch all
+    } else if (userData?.role === 'ROLE_ADMIN' && userData?.zone_id) {
+      query = query.eq('devices.zone_id', userData.zone_id);
+    } else {
+      query = query.eq('inspector_id', session.user.id);
+    }
+
+    const { data } = await query;
 
     if (data) {
       setInspections(data);
@@ -56,7 +69,9 @@ export default function HistoryScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Inspections</Text>
+        <Text style={styles.headerTitle}>
+          {userRole === 'ROLE_SUPERADMIN' ? 'All Inspections' : userRole === 'ROLE_ADMIN' ? 'Zone Inspections' : 'My Inspections'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -71,7 +86,9 @@ export default function HistoryScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>You haven't performed any inspections yet.</Text>
+            <Text style={styles.emptyText}>
+              {userRole === 'ROLE_USER' ? "You haven't performed any inspections yet." : "No inspection records found."}
+            </Text>
           }
         />
       )}

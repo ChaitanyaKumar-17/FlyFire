@@ -17,19 +17,28 @@ export default function DashboardScreen() {
       if (session?.user) {
         const { data } = await supabase
           .from('users')
-          .select('full_name')
+          .select('full_name, role, zone_id')
           .eq('id', session.user.id)
           .single();
         if (data) {
           setUserName(data.full_name);
         }
         
-        const { data: inspections } = await supabase
+        let query = supabase
           .from('inspections')
-          .select('id, remark, inspected_at, devices(serial_number)')
-          .eq('inspector_id', session.user.id)
+          .select('id, remark, inspected_at, devices!inner(serial_number, zone_id)')
           .order('inspected_at', { ascending: false })
           .limit(5);
+
+        if (data?.role === 'ROLE_SUPERADMIN') {
+          // no filter
+        } else if (data?.role === 'ROLE_ADMIN' && data?.zone_id) {
+          query = query.eq('devices.zone_id', data.zone_id);
+        } else {
+          query = query.eq('inspector_id', session.user.id);
+        }
+
+        const { data: inspections } = await query;
         if (inspections) setRecentInspections(inspections);
       }
     };
