@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Download, Trash2, Search, History, QrCode } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
 interface Device {
@@ -22,6 +23,7 @@ export default function Devices() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDevice, setNewDevice] = useState({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
   const [loading, setLoading] = useState(true);
+  const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
   const [auditDevice, setAuditDevice] = useState<Device | null>(null);
   const [audits, setAudits] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,41 +132,49 @@ export default function Devices() {
       
       setIsModalOpen(false);
       setNewDevice({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
+      toast.success('Device registered successfully!');
       fetchDevices(); // Refresh list to see the new device with its QR code
     } catch (error: any) {
-      alert(error.message || 'Error registering device');
+      toast.error(error.message || 'Error registering device');
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to decommission this device?')) {
-      try {
-        const { error } = await supabase
-          .from('devices')
-          .update({ is_active: false })
-          .eq('id', id);
-          
-        if (error) throw error;
-        fetchDevices();
-      } catch (error: any) {
-        alert('Error decommissioning device');
-      }
+  const confirmDeleteDevice = async () => {
+    if (!deviceToDelete) return;
+    const id = deviceToDelete;
+    setDeviceToDelete(null);
+    try {
+      const { error } = await supabase
+        .from('devices')
+        .update({ is_active: false })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast.success('Device decommissioned successfully!');
+      fetchDevices();
+    } catch (error: any) {
+      toast.error(error.message || 'Error decommissioning device');
     }
+  };
+
+  const handleDelete = (id: string) => {
+    setDeviceToDelete(id);
   };
 
   const handlePermanentDelete = async (id: string) => {
-    if (confirm('Are you sure you want to permanently delete this device? This will permanently delete all inspection history tied to it. This action cannot be undone.')) {
-      try {
-        const { error } = await supabase
-          .from('devices')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
-        fetchDevices();
-      } catch (error: any) {
-        alert('Error permanently deleting device: ' + error.message);
-      }
+    // Kept as-is, can be hooked to custom modal later if needed, but not triggered in UI normally.
+    try {
+      const { error } = await supabase
+        .from('devices')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      toast.success('Device permanently deleted!');
+      fetchDevices();
+    } catch (error: any) {
+      alert('Error permanently deleting device: ' + error.message);
     }
   };
 
@@ -405,6 +415,28 @@ export default function Devices() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deviceToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-button" onClick={() => setDeviceToDelete(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to decommission this device? It will be marked as inactive.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-secondary" onClick={() => setDeviceToDelete(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmDeleteDevice} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
+                Decommission
+              </button>
             </div>
           </div>
         </div>

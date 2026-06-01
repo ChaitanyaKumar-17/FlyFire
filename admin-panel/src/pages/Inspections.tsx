@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { History, Search, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Inspections() {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -11,6 +12,7 @@ export default function Inspections() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [inspectionToDelete, setInspectionToDelete] = useState<string | null>(null);
 
   const fetchInspections = async () => {
     try {
@@ -54,16 +56,22 @@ export default function Inspections() {
     fetchInspections();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to permanently delete this inspection record?')) {
-      try {
-        const { error } = await supabase.from('inspections').delete().eq('id', id);
-        if (error) throw error;
-        fetchInspections(); // Refresh the list
-      } catch (error: any) {
-        alert('Error deleting inspection: ' + error.message);
-      }
+  const confirmDeleteInspection = async () => {
+    if (!inspectionToDelete) return;
+    const id = inspectionToDelete;
+    setInspectionToDelete(null);
+    try {
+      const { error } = await supabase.from('inspections').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Inspection record permanently deleted!');
+      fetchInspections(); // Refresh the list
+    } catch (error: any) {
+      toast.error('Error deleting inspection: ' + error.message);
     }
+  };
+
+  const handleDelete = (id: string) => {
+    setInspectionToDelete(id);
   };
 
   const filteredInspections = inspections.filter(insp => {
@@ -204,6 +212,28 @@ export default function Inspections() {
           </div>
         )}
       </div>
+      
+      {inspectionToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-button" onClick={() => setInspectionToDelete(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to permanently delete this inspection record? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-secondary" onClick={() => setInspectionToDelete(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmDeleteInspection} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
+                Delete Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

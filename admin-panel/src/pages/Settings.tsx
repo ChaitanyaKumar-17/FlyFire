@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MapPin, Tag, Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface Zone {
   id: string;
@@ -22,6 +23,8 @@ export default function Settings() {
   const [newDeviceType, setNewDeviceType] = useState('');
 
   const [loading, setLoading] = useState(true);
+  const [zoneToDelete, setZoneToDelete] = useState<string | null>(null);
+  const [deviceTypeToDelete, setDeviceTypeToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -61,13 +64,14 @@ export default function Settings() {
       
       if (response.ok) {
         setNewZone('');
+        toast.success('Zone created successfully!');
         fetchData();
       } else {
         const err = await response.json().catch(()=>({}));
-        alert(err.error || 'Failed to create zone');
+        toast.error(err.error || 'Failed to create zone');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
@@ -88,18 +92,21 @@ export default function Settings() {
       
       if (response.ok) {
         setNewDeviceType('');
+        toast.success('Device type created successfully!');
         fetchData();
       } else {
         const err = await response.json().catch(()=>({}));
-        alert(err.error || 'Failed to create device type');
+        toast.error(err.error || 'Failed to create device type');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
-  const handleDeleteZone = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this zone?')) return;
+  const confirmDeleteZone = async () => {
+    if (!zoneToDelete) return;
+    const id = zoneToDelete;
+    setZoneToDelete(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`http://localhost:8080/api/admin/zones/${id}`, {
@@ -107,18 +114,25 @@ export default function Settings() {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (response.ok) {
+        toast.success('Zone deleted successfully!');
         fetchData();
       } else {
         const err = await response.json().catch(()=>({}));
-        alert(err.error || 'Failed to delete zone');
+        toast.error(err.error || 'Failed to delete zone');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
-  const handleDeleteDeviceType = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this device type?')) return;
+  const handleDeleteZone = (id: string) => {
+    setZoneToDelete(id);
+  };
+
+  const confirmDeleteDeviceType = async () => {
+    if (!deviceTypeToDelete) return;
+    const id = deviceTypeToDelete;
+    setDeviceTypeToDelete(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`http://localhost:8080/api/admin/devicetypes/${id}`, {
@@ -126,14 +140,19 @@ export default function Settings() {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (response.ok) {
+        toast.success('Device type deleted successfully!');
         fetchData();
       } else {
         const err = await response.json().catch(()=>({}));
-        alert(err.error || 'Failed to delete device type');
+        toast.error(err.error || 'Failed to delete device type');
       }
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
+  };
+
+  const handleDeleteDeviceType = (id: string) => {
+    setDeviceTypeToDelete(id);
   };
 
   return (
@@ -248,6 +267,42 @@ export default function Settings() {
         </div>
 
       </div>
+
+      {zoneToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-button" onClick={() => setZoneToDelete(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this zone? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-secondary" onClick={() => setZoneToDelete(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={confirmDeleteZone} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>Delete Zone</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deviceTypeToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-button" onClick={() => setDeviceTypeToDelete(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this device type? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-secondary" onClick={() => setDeviceTypeToDelete(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={confirmDeleteDeviceType} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>Delete Type</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, UserMinus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
 interface User {
@@ -27,6 +28,7 @@ export default function Users() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
   const [loading, setLoading] = useState(true);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterZone, setFilterZone] = useState('all');
@@ -83,9 +85,9 @@ export default function Users() {
         }));
         setUsers(mappedUsers);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
-      alert('Error fetching users: ' + (error.message || JSON.stringify(error)));
+      toast.error('Error fetching users: ' + (error.message || JSON.stringify(error)));
     } finally {
       setLoading(false);
     }
@@ -120,15 +122,18 @@ export default function Users() {
 
       setIsModalOpen(false);
       setNewUser({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
+      toast.success('User registered successfully!');
       fetchUsers();
     } catch (error: any) {
-      alert(error.message || 'Error registering user');
+      toast.error(error.message || 'Error registering user');
     }
   };
 
-  const handleDisable = async (id: string) => {
-    if (confirm('Are you sure you want to permanently delete this user?')) {
-      try {
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    const id = userToDelete;
+    setUserToDelete(null);
+    try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("No active session found.");
         
@@ -144,11 +149,15 @@ export default function Users() {
           throw new Error(errorData.error || `Backend returned status ${response.status}`);
         }
           
+        toast.success('User deleted successfully!');
         fetchUsers();
       } catch (error: any) {
-        alert('Error deleting user: ' + error.message);
+        toast.error(error.message || 'Error deleting user');
       }
-    }
+    };
+
+  const handleDisable = (id: string) => {
+    setUserToDelete(id);
   };
 
   return (
@@ -354,6 +363,28 @@ export default function Users() {
                 <button type="submit" className="btn btn-primary">Create User</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {userToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-button" onClick={() => setUserToDelete(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to permanently delete this user? This action cannot be undone.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-secondary" onClick={() => setUserToDelete(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmDeleteUser} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
+                Delete User
+              </button>
+            </div>
           </div>
         </div>
       )}
