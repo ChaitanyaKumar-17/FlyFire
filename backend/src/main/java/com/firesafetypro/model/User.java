@@ -30,6 +30,9 @@ public class User {
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = true;
 
+    @Column(name = "is_first_login", nullable = false)
+    private Boolean isFirstLogin = true;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -60,6 +63,8 @@ public class User {
     public void setRole(UserRole role) { this.role = role; }
     public Boolean getIsEnabled() { return isEnabled; }
     public void setIsEnabled(Boolean isEnabled) { this.isEnabled = isEnabled; }
+    public Boolean getIsFirstLogin() { return isFirstLogin; }
+    public void setIsFirstLogin(Boolean isFirstLogin) { this.isFirstLogin = isFirstLogin; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public UUID getCreatedBy() { return createdBy; }

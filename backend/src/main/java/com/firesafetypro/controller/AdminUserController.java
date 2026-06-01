@@ -69,8 +69,35 @@ public class AdminUserController {
             return ResponseEntity.status(403).body(Map.of("error", "Insufficient permissions."));
         }
 
-        if (userRepository.findByEmail(email).isPresent() || userRepository.findByUsername(username).isPresent()) {
-            return ResponseEntity.status(409).body(Map.of("error", "User with this email or username already exists."));
+        User existingByEmail = userRepository.findByEmail(email).orElse(null);
+        User existingByUsername = userRepository.findByUsername(username).orElse(null);
+
+        if (existingByEmail != null || existingByUsername != null) {
+            User existing = existingByEmail != null ? existingByEmail : existingByUsername;
+
+            if (existing.getIsEnabled()) {
+                return ResponseEntity.status(409).body(Map.of("error", "User with this email or username already exists and is active."));
+            }
+
+            try {
+                // User exists but is soft-deleted. Reactivate them.
+                authService.reactivateAuthUser(existing.getId().toString(), password, fullName, targetRole.name());
+
+                existing.setFullName(fullName);
+                existing.setRole(targetRole);
+                existing.setZone(targetZone);
+                existing.setIsEnabled(true);
+                existing.setIsFirstLogin(true);
+                
+                // Allow them to reuse their email and username for the new registration
+                existing.setEmail(email);
+                existing.setUsername(username);
+
+                userRepository.save(existing);
+                return ResponseEntity.ok(existing);
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body(Map.of("error", "Failed to reactivate soft-deleted user: " + e.getMessage()));
+            }
         }
 
         try {
@@ -118,23 +145,16 @@ public class AdminUserController {
         }
 
         try {
-            // Unlink relationships and delete from public.users in a fully committed transaction
+            // Perform soft delete to preserve inspection records
             transactionTemplate.execute(status -> {
-                entityManager.createNativeQuery("UPDATE devices SET registered_by = NULL WHERE registered_by = :id")
-                             .setParameter("id", id).executeUpdate();
-                entityManager.createNativeQuery("UPDATE zones SET created_by = NULL WHERE created_by = :id")
-                             .setParameter("id", id).executeUpdate();
-                entityManager.createNativeQuery("UPDATE device_types SET created_by = NULL WHERE created_by = :id")
-                             .setParameter("id", id).executeUpdate();
-                entityManager.createNativeQuery("UPDATE users SET created_by = NULL WHERE created_by = :id")
-                             .setParameter("id", id).executeUpdate();
-                userRepository.deleteById(id);
+                targetUser.setIsEnabled(false);
+                userRepository.save(targetUser);
                 return null;
             });
             
-            // Delete from auth.users via Admin API ONLY AFTER local database commits
-            authService.deleteAuthUser(id.toString());
-            return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
+            // Suspend the user in Supabase Auth so they can never log in again
+            authService.disableAuthUser(id.toString());
+            return ResponseEntity.ok(Map.of("message", "User successfully soft-deleted and records preserved."));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to delete user: " + e.getMessage()));
         }

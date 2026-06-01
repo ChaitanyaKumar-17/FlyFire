@@ -61,20 +61,54 @@ public class SupabaseAuthService {
         return (String) responseMap.get("id");
     }
 
-    public void deleteAuthUser(String userId) throws Exception {
+    public void disableAuthUser(String userId) throws Exception {
         String endpoint = supabaseUrl + "/auth/v1/admin/users/" + userId;
+        
+        Map<String, Object> payload = Map.of(
+                "ban_duration", "876000h"
+        );
+        String jsonPayload = objectMapper.writeValueAsString(payload);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
                 .header("Authorization", "Bearer " + serviceRoleKey)
                 .header("apikey", serviceRoleKey)
-                .DELETE()
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonPayload))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() >= 400 && response.statusCode() != 404) {
-            throw new RuntimeException("Failed to delete Supabase Auth User: " + response.body());
+            throw new RuntimeException("Failed to disable Supabase Auth User: " + response.body());
+        }
+    }
+
+    public void reactivateAuthUser(String userId, String newPassword, String fullName, String role) throws Exception {
+        String endpoint = supabaseUrl + "/auth/v1/admin/users/" + userId;
+        
+        Map<String, Object> payload = Map.of(
+                "ban_duration", "0h",
+                "password", newPassword,
+                "user_metadata", Map.of(
+                        "full_name", fullName,
+                        "role", role
+                )
+        );
+        String jsonPayload = objectMapper.writeValueAsString(payload);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("apikey", serviceRoleKey)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("Failed to reactivate Supabase Auth User: " + response.body());
         }
     }
 }
