@@ -31,7 +31,7 @@ export default function Login() {
       if (data.user) {
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .select('role')
+          .select('role, is_first_login')
           .eq('id', data.user.id)
           .single();
 
@@ -42,7 +42,7 @@ export default function Login() {
           throw new Error('Access denied. Admin privileges required.');
         }
 
-        if (profile?.is_first_login) {
+        if (profile?.is_first_login && profile?.role !== 'ROLE_SUPERADMIN') {
           setIsFirstLoginPrompt(true);
           setUserId(data.user.id);
           setLoading(false);

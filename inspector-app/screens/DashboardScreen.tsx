@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { LogOut, QrCode } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,11 @@ export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
   const [recentInspections, setRecentInspections] = useState<any[]>([]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  
+  const [isFirstLoginPrompt, setIsFirstLoginPrompt] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -17,11 +22,17 @@ export default function DashboardScreen() {
       if (session?.user) {
         const { data } = await supabase
           .from('users')
-          .select('full_name, role, zone_id')
+          .select('full_name, role, zone_id, is_first_login')
           .eq('id', session.user.id)
           .single();
         if (data) {
           setUserName(data.full_name);
+          setUserId(session.user.id);
+          
+          if (data.is_first_login && data.role !== 'ROLE_SUPERADMIN') {
+            setIsFirstLoginPrompt(true);
+            return;
+          }
         }
         
         let query = supabase
@@ -49,13 +60,81 @@ export default function DashboardScreen() {
     await supabase.auth.signOut();
   };
 
+  const handleUpdatePassword = async () => {
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsUpdating(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    
+    if (updateError) {
+      Alert.alert('Update Failed', updateError.message);
+      setIsUpdating(false);
+      return;
+    }
+
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({ is_first_login: false })
+      .eq('id', userId);
+
+    if (dbError) {
+      Alert.alert('Error', 'Could not update user record.');
+    } else {
+      setIsFirstLoginPrompt(false);
+    }
+    setIsUpdating(false);
+  };
+
   const handleScan = () => {
     navigation.navigate('Scanner');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      {isFirstLoginPrompt ? (
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={styles.firstLoginContainer}
+        >
+          <View style={styles.firstLoginCard}>
+            <Text style={styles.firstLoginTitle}>Update Password</Text>
+            <Text style={styles.firstLoginSubtitle}>
+              You are using a temporary password. Please update your password to continue using the inspector portal.
+            </Text>
+            
+            <Text style={styles.label}>New Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter new password"
+              placeholderTextColor="#9CA3AF"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+
+            <TouchableOpacity 
+              style={[styles.updateButton, isUpdating && styles.updateButtonDisabled]} 
+              onPress={handleUpdatePassword}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.updateButtonText}>Update Password</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={handleLogout} style={{ marginTop: 16, alignItems: 'center' }}>
+              <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Cancel & Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      ) : (
+        <>
+          <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{userName || 'Inspector'}</Text>
@@ -101,6 +180,8 @@ export default function DashboardScreen() {
           )}
         </View>
       </View>
+      </>
+      )}
     </SafeAreaView>
   );
 }
@@ -249,5 +330,63 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 16,
+  },
+  firstLoginContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  firstLoginCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 16,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 },
+    }),
+  },
+  firstLoginTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  firstLoginSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 20,
+  },
+  updateButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  updateButtonDisabled: {
+    backgroundColor: '#93C5FD',
+  },
+  updateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
