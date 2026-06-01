@@ -96,7 +96,7 @@ export default function Devices() {
       .from('inspections')
       .select('*, users(full_name)')
       .eq('device_id', device.id)
-      .order('created_at', { ascending: false });
+      .order('inspected_at', { ascending: false });
     setAudits(data || []);
   };
 
@@ -388,16 +388,12 @@ export default function Devices() {
                 <tbody>
                   {audits.map((a) => (
                     <tr key={a.id}>
-                      <td>{new Date(a.created_at).toLocaleString()}</td>
+                      <td>{new Date(a.inspected_at).toLocaleString()}</td>
                       <td>{a.users?.full_name || 'Unknown'}</td>
                       <td>
-                        {a.status === 'PASS' ? (
-                          <span className="badge badge-success">Passed</span>
-                        ) : (
-                          <span className="badge badge-danger">Failed</span>
-                        )}
+                        <span className="badge badge-success">Completed</span>
                       </td>
-                      <td>{a.notes || '-'}</td>
+                      <td>{a.remark || '-'}</td>
                     </tr>
                   ))}
                   {audits.length === 0 && (
