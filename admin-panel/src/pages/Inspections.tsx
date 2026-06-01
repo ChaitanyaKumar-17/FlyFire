@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { History, Search } from 'lucide-react';
+import { History, Search, Trash2 } from 'lucide-react';
 
 export default function Inspections() {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -10,6 +10,7 @@ export default function Inspections() {
   const [filterZone, setFilterZone] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [userRole, setUserRole] = useState('');
 
   const fetchInspections = async () => {
     try {
@@ -18,6 +19,7 @@ export default function Inspections() {
       if (!session) return;
       
       const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
+      if (userData) setUserRole(userData.role);
       const isZonalAdmin = userData?.role === 'ROLE_ADMIN' && userData.zone_id;
 
       let query = supabase.from('inspections').select(`
@@ -51,6 +53,18 @@ export default function Inspections() {
   useEffect(() => {
     fetchInspections();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to permanently delete this inspection record?')) {
+      try {
+        const { error } = await supabase.from('inspections').delete().eq('id', id);
+        if (error) throw error;
+        fetchInspections(); // Refresh the list
+      } catch (error: any) {
+        alert('Error deleting inspection: ' + error.message);
+      }
+    }
+  };
 
   const filteredInspections = inspections.filter(insp => {
     const searchLower = searchQuery.toLowerCase();
@@ -143,6 +157,7 @@ export default function Inspections() {
                   <th>Inspector</th>
                   <th>Date & Time</th>
                   <th>Remark</th>
+                  {userRole === 'ROLE_SUPERADMIN' && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -150,9 +165,7 @@ export default function Inspections() {
                   <tr key={insp.id}>
                     <td style={{ fontWeight: 500 }}>{insp.devices?.serial_number}</td>
                     <td>
-                      <span className="badge">
-                        {insp.devices?.device_types?.name}
-                      </span>
+                      {insp.devices?.device_types?.name}
                     </td>
                     <td>{insp.devices?.zones?.name || 'Unassigned'}</td>
                     <td>{insp.users?.full_name}</td>
@@ -169,11 +182,18 @@ export default function Inspections() {
                         {insp.remark}
                       </p>
                     </td>
+                    {userRole === 'ROLE_SUPERADMIN' && (
+                      <td>
+                        <button className="btn btn-ghost" title="Delete Inspection" onClick={() => handleDelete(insp.id)} style={{ color: 'var(--danger)' }}>
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {filteredInspections.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                    <td colSpan={userRole === 'ROLE_SUPERADMIN' ? 7 : 6} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
                       <History size={32} style={{ margin: '0 auto 1rem', opacity: 0.5, display: 'block' }} />
                       No inspection records found.
                     </td>
