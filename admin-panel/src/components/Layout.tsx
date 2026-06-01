@@ -7,6 +7,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string>('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -29,6 +30,10 @@ export default function Layout() {
   }, [navigate]);
 
   const handleLogout = async () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
@@ -98,6 +103,28 @@ export default function Layout() {
       <main className="main-content">
         <Outlet />
       </main>
+
+      {showLogoutConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Log Out</h2>
+              <button className="close-button" onClick={() => setShowLogoutConfirm(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to log out? You will need to enter your credentials to access the portal again.</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-secondary" onClick={() => setShowLogoutConfirm(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmLogout} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
