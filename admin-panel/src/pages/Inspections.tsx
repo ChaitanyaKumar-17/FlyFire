@@ -4,8 +4,12 @@ import { History, Search } from 'lucide-react';
 
 export default function Inspections() {
   const [inspections, setInspections] = useState<any[]>([]);
+  const [zones, setZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterZone, setFilterZone] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const fetchInspections = async () => {
     try {
@@ -20,9 +24,12 @@ export default function Inspections() {
         id,
         remark,
         inspected_at,
-        devices!inner ( serial_number, zone_id, device_types ( name ) ),
+        devices!inner ( serial_number, zone_id, device_types ( name ), zones ( name ) ),
         users ( full_name )
       `).order('inspected_at', { ascending: false });
+
+      const { data: zonesData } = await supabase.from('zones').select('*').order('name');
+      if (zonesData) setZones(zonesData);
 
       if (isZonalAdmin) {
         query = query.eq('devices.zone_id', userData.zone_id);
@@ -50,7 +57,21 @@ export default function Inspections() {
     const serial = insp.devices?.serial_number?.toLowerCase() || '';
     const inspector = insp.users?.full_name?.toLowerCase() || '';
     const remark = insp.remark?.toLowerCase() || '';
-    return serial.includes(searchLower) || inspector.includes(searchLower) || remark.includes(searchLower);
+    
+    const matchesSearch = serial.includes(searchLower) || inspector.includes(searchLower) || remark.includes(searchLower);
+    const matchesZone = filterZone === 'all' || insp.devices?.zones?.name === filterZone;
+    
+    let matchesDate = true;
+    if (startDate && endDate) {
+      const inspDate = new Date(insp.inspected_at);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      matchesDate = inspDate >= start && inspDate <= end;
+    }
+
+    return matchesSearch && matchesZone && matchesDate;
   });
 
   return (
@@ -63,15 +84,44 @@ export default function Inspections() {
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div className="search-container" style={{ flex: 1, maxWidth: '400px' }}>
-            <Search className="search-icon" size={20} />
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
+            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
             <input 
               type="text" 
-              className="search-input" 
+              className="form-control" 
+              style={{ paddingLeft: '3rem' }}
               placeholder="Search by serial, inspector, or remark..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <select 
+            className="form-control" 
+            style={{ width: 'auto', minWidth: '150px' }}
+            value={filterZone} 
+            onChange={(e) => setFilterZone(e.target.value)}
+          >
+            <option value="all">All Zones</option>
+            {zones.map(z => (
+              <option key={z.id} value={z.name}>{z.name}</option>
+            ))}
+          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input 
+              type="date" 
+              className="form-control" 
+              style={{ width: 'auto' }}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span style={{ color: 'var(--text-secondary)' }}>to</span>
+            <input 
+              type="date" 
+              className="form-control" 
+              style={{ width: 'auto' }}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
         </div>
@@ -89,6 +139,7 @@ export default function Inspections() {
                 <tr>
                   <th>Device Serial</th>
                   <th>Type</th>
+                  <th>Zone</th>
                   <th>Inspector</th>
                   <th>Date & Time</th>
                   <th>Remark</th>
@@ -99,10 +150,11 @@ export default function Inspections() {
                   <tr key={insp.id}>
                     <td style={{ fontWeight: 500 }}>{insp.devices?.serial_number}</td>
                     <td>
-                      <span className="badge" style={{ backgroundColor: '#F3F4F6', color: '#374151' }}>
+                      <span className="badge">
                         {insp.devices?.device_types?.name}
                       </span>
                     </td>
+                    <td>{insp.devices?.zones?.name || 'Unassigned'}</td>
                     <td>{insp.users?.full_name}</td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -121,8 +173,8 @@ export default function Inspections() {
                 ))}
                 {filteredInspections.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-                      <History size={32} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                      <History size={32} style={{ margin: '0 auto 1rem', opacity: 0.5, display: 'block' }} />
                       No inspection records found.
                     </td>
                   </tr>

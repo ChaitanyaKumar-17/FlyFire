@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, Trash2, Search, History } from 'lucide-react';
+import { Plus, Download, Trash2, Search, History, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Device {
@@ -26,12 +26,16 @@ export default function Devices() {
   const [audits, setAudits] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterZone, setFilterZone] = useState('all');
 
   const filteredDevices = devices.filter(d => {
     const matchesSearch = d.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           d.deviceType.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'all' || d.deviceType === filterType;
-    return matchesSearch && matchesType;
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'active' ? d.isActive : !d.isActive);
+    const matchesZone = filterZone === 'all' || d.zone === filterZone;
+    return matchesSearch && matchesType && matchesStatus && matchesZone;
   });
 
   useEffect(() => {
@@ -201,6 +205,29 @@ export default function Devices() {
               <option key={t.id} value={t.name}>{t.name}</option>
             ))}
           </select>
+          <select 
+            className="form-control" 
+            style={{ width: '200px' }}
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="decommissioned">Decommissioned</option>
+          </select>
+          {userRole === 'ROLE_SUPERADMIN' && (
+            <select 
+              className="form-control" 
+              style={{ width: '200px' }}
+              value={filterZone}
+              onChange={(e) => setFilterZone(e.target.value)}
+            >
+              <option value="all">All Zones</option>
+              {zones.map(z => (
+                <option key={z.id} value={z.name}>{z.name}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -261,6 +288,14 @@ export default function Devices() {
                   </td>
                 </tr>
               ))}
+              {filteredDevices.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                    <QrCode size={32} style={{ margin: '0 auto 1rem', opacity: 0.5, display: 'block' }} />
+                    No devices found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

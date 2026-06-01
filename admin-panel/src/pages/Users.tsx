@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserMinus, ShieldAlert } from 'lucide-react';
+import { UserPlus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface User {
@@ -166,7 +166,7 @@ export default function Users() {
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>🔍</span>
+            <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
             <input 
               type="text" 
               className="form-control" 
@@ -255,6 +255,14 @@ export default function Users() {
                   </td>
                 </tr>
               ))}
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                    <UsersIcon size={32} style={{ margin: '0 auto 1rem', opacity: 0.5, display: 'block' }} />
+                    No users found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

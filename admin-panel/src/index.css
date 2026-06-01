@@ -55,6 +55,7 @@ input, select, textarea {
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-md);
   transition: border-color 0.2s ease;
+  color-scheme: dark;
 }
 
 input:focus, select:focus, textarea:focus {
