@@ -5,6 +5,7 @@ import { LogOut, QrCode } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
+import { tempPassword } from './LoginScreen';
 
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
@@ -63,6 +64,11 @@ export default function DashboardScreen() {
   const handleUpdatePassword = async () => {
     if (newPassword.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+    
+    if (newPassword === tempPassword) {
+      Alert.alert('Update Failed', 'New password must be strictly different from your temporary password.');
       return;
     }
 

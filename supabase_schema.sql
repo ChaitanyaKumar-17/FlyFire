@@ -102,6 +102,7 @@ CREATE POLICY "Admins can view and insert inspections" ON public.inspections FOR
 CREATE POLICY "Users are viewable by everyone" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Admins can manage users" ON public.users FOR ALL TO authenticated USING ( public.is_admin() );
 CREATE POLICY "Users can view own profile" ON public.users FOR SELECT TO authenticated USING (id = auth.uid());
+CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 
 -- Zones Policies
 CREATE POLICY "Zones are viewable by everyone" ON public.zones FOR SELECT USING (true);

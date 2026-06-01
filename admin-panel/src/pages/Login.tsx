@@ -60,6 +60,12 @@ export default function Login() {
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (newPassword === password) {
+      setError('New password must be strictly different from your temporary password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
