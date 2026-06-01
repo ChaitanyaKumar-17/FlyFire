@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon } from 'lucide-react';
+import { UserPlus, UserMinus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface User {
@@ -32,9 +32,10 @@ export default function Users() {
   const [filterZone, setFilterZone] = useState('all');
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = (u.fullName || '').toLowerCase().includes(searchLower) || 
+                          (u.username || '').toLowerCase().includes(searchLower) ||
+                          (u.email || '').toLowerCase().includes(searchLower);
     const matchesRole = filterRole === 'all' || u.role === filterRole;
     const matchesZone = filterZone === 'all' || u.zone === filterZone;
     return matchesSearch && matchesRole && matchesZone;
