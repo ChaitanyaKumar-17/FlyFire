@@ -9,11 +9,13 @@ import { Session } from '@supabase/supabase-js';
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import ScannerScreen from './screens/ScannerScreen';
+import InspectionDetailScreen from './screens/InspectionDetailScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   Dashboard: undefined;
   Scanner: undefined;
+  InspectionDetail: { deviceId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -52,6 +54,7 @@ export default function App() {
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Scanner" component={ScannerScreen} />
+            <Stack.Screen name="InspectionDetail" component={InspectionDetailScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

@@ -21,9 +21,7 @@ export default function ScannerScreen() {
   const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
     setScanned(true);
     // data should be the UUID of the device based on our QR code generation
-    alert(`Scanned Device ID: ${data}`);
-    // We will navigate to the Device Detail screen here later
-    // navigation.navigate('DeviceDetail', { deviceId: data });
+    navigation.navigate('InspectionDetail' as never, { deviceId: data } as never);
   };
 
   if (hasPermission === null) {
