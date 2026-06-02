@@ -21,7 +21,8 @@ export default function ScannerScreen() {
   const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
     setScanned(true);
     // data should be the UUID of the device based on our QR code generation
-    navigation.navigate('InspectionDetail' as never, { deviceId: data } as never);
+    // @ts-ignore
+    navigation.navigate('InspectionDetail', { deviceId: data });
   };
 
   if (hasPermission === null) {
@@ -42,7 +43,7 @@ export default function ScannerScreen() {
           barcodeScannerSettings={{
             barcodeTypes: ["qr"],
           }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
         <View style={styles.overlay}>
           <View style={styles.reticleContainer}>
@@ -89,7 +90,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },

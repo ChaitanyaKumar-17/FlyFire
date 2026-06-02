@@ -87,7 +87,7 @@ $$;
 
 -- Devices Policies
 CREATE POLICY "Public can view active devices" ON public.devices FOR SELECT USING (is_active = true);
-CREATE POLICY "Users can view active devices" ON public.devices FOR SELECT TO authenticated USING (is_active = true);
+CREATE POLICY "Users can view all devices" ON public.devices FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admins have full access to devices" ON public.devices FOR ALL TO authenticated USING ( public.is_admin() );
 
 -- Inspections Policies

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { LogOut, QrCode, Eye, EyeOff } from 'lucide-react-native';
+import { LogOut, QrCode, Eye, EyeOff, ChevronRight, ShieldCheck } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -10,6 +10,7 @@ import { TempStorage } from './LoginScreen';
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
   const [recentInspections, setRecentInspections] = useState<any[]>([]);
+  const [activeDevices, setActiveDevices] = useState<any[]>([]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const [isFirstLoginPrompt, setIsFirstLoginPrompt] = useState(false);
@@ -22,6 +23,8 @@ export default function DashboardScreen() {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showDevicesModal, setShowDevicesModal] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -40,6 +43,15 @@ export default function DashboardScreen() {
             setIsFirstLoginPrompt(true);
             return;
           }
+        }
+        
+        if (data?.zone_id) {
+          const { data: devices } = await supabase
+            .from('devices')
+            .select('id, serial_number, is_active, device_types(name), zones(name)')
+            .eq('zone_id', data.zone_id)
+            .order('registered_at', { ascending: false });
+          if (devices) setActiveDevices(devices);
         }
         
         let query = supabase
@@ -116,6 +128,42 @@ export default function DashboardScreen() {
     setIsUpdating(false);
   };
 
+  const handleUpdatePasswordFromProfile = async () => {
+    setErrorMessage('');
+    
+    if (!oldPassword) {
+      setErrorMessage('Please enter your current password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setErrorMessage('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword === oldPassword) {
+      setErrorMessage('New password must be strictly different from your current password.');
+      return;
+    }
+
+    setIsUpdating(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    
+    if (updateError) {
+      if (updateError.message.toLowerCase().includes('different') || updateError.message.toLowerCase().includes('same')) {
+        setErrorMessage('New password must be strictly different.');
+      } else {
+        setErrorMessage(updateError.message);
+      }
+      setIsUpdating(false);
+      return;
+    }
+
+    Alert.alert('Success', 'Your password has been updated.');
+    setShowProfileModal(false);
+    setOldPassword('');
+    setNewPassword('');
+    setIsUpdating(false);
+  };
+
   const handleScan = () => {
     navigation.navigate('Scanner');
   };
@@ -185,16 +233,47 @@ export default function DashboardScreen() {
       ) : (
         <>
           <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.userName}>{userName || 'Inspector'}</Text>
-        </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={20} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity 
+              onPress={() => { setOldPassword(''); setNewPassword(''); setErrorMessage(''); setShowProfileModal(true); }}
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+            >
+              <View style={styles.avatarContainer}>
+                <Text style={styles.avatarText}>{userName ? userName.charAt(0).toUpperCase() : 'I'}</Text>
+              </View>
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.greeting}>Welcome back 👋</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={styles.userName}>{userName || 'Inspector'}</Text>
+                  <ChevronRight size={16} color="#6B7280" style={{ marginTop: 2 }} />
+                </View>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <LogOut size={20} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
 
       <View style={styles.content}>
+        
+        {activeDevices.length > 0 && (
+          <TouchableOpacity 
+            style={styles.activeDevicesCard}
+            onPress={() => setShowDevicesModal(true)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={styles.activeDevicesIconWrapper}>
+                <ShieldCheck size={26} color="#10B981" />
+              </View>
+              <View style={{ marginLeft: 16, flex: 1 }}>
+                <Text style={styles.activeDevicesTitle}>Devices</Text>
+                <Text style={styles.activeDevicesSubtitle}>{activeDevices.length} devices in your zone</Text>
+              </View>
+              <ChevronRight size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.recentSection}>
           <View style={styles.recentHeader}>
             <Text style={styles.recentTitle}>Recent Inspections</Text>
@@ -261,6 +340,107 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showDevicesModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={styles.modalTitle}>Devices in Your Zone</Text>
+              <TouchableOpacity onPress={() => setShowDevicesModal(false)}>
+                <Text style={{fontSize: 20, color: '#6B7280'}}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {activeDevices.map(device => (
+                <View key={device.id} style={styles.deviceListItem}>
+                  <View style={styles.deviceListInfo}>
+                    <Text style={styles.deviceListSerial}>{device.serial_number}</Text>
+                    <Text style={styles.deviceListType}>{device.device_types?.name}</Text>
+                  </View>
+                  <View style={[styles.deviceListStatus, !device.is_active && styles.deviceListStatusInactive]}>
+                    <View style={[styles.deviceListStatusDot, !device.is_active && styles.deviceListStatusDotInactive]} />
+                    <Text style={[styles.deviceListStatusText, !device.is_active && styles.deviceListStatusTextInactive]}>
+                      {device.is_active ? 'Active' : 'Decommissioned'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showProfileModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={styles.modalTitle}>My Profile</Text>
+              <TouchableOpacity onPress={() => setShowProfileModal(false)}><Text style={{fontSize: 20, color: '#6B7280'}}>✕</Text></TouchableOpacity>
+            </View>
+
+            <View style={{ marginBottom: 24 }}>
+              <Text style={styles.label}>Name</Text>
+              <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827', marginBottom: 8 }}>{userName}</Text>
+            </View>
+
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#111827', marginBottom: 12 }}>Change Password</Text>
+            {errorMessage ? <Text style={{ color: '#EF4444', marginBottom: 12, fontWeight: '500' }}>{errorMessage}</Text> : null}
+
+            <Text style={styles.label}>Current Password</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter current password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showOldPassword}
+                value={oldPassword}
+                onChangeText={setOldPassword}
+              />
+              <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)} style={styles.eyeIcon}>
+                {showOldPassword ? <EyeOff size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.label}>New Password</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter new password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showNewPassword}
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+              <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeIcon}>
+                {showNewPassword ? <EyeOff size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.updateButton, isUpdating && styles.updateButtonDisabled]} 
+              onPress={handleUpdatePasswordFromProfile}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.updateButtonText}>Update Password</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -276,32 +456,137 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    ...Platform.select({
+      web: { boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 5 },
+    }),
+    zIndex: 10,
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4F46E5',
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    marginBottom: 4,
+    fontWeight: '600',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   userName: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#111827',
   },
   logoutButton: {
-    padding: 8,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 24,
+  },
+  activeDevicesCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 },
+    }),
+  },
+  activeDevicesIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#D1FAE5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activeDevicesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  activeDevicesSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  deviceListItem: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  deviceListInfo: {
+    flex: 1,
+  },
+  deviceListSerial: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  deviceListType: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  deviceListStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  deviceListStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+    marginRight: 6,
+  },
+  deviceListStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  deviceListStatusInactive: {
+    backgroundColor: '#FEE2E2',
+  },
+  deviceListStatusDotInactive: {
+    backgroundColor: '#EF4444',
+  },
+  deviceListStatusTextInactive: {
+    color: '#991B1B',
   },
   recentSection: {
     flex: 1,
