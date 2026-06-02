@@ -31,6 +31,30 @@ export default function Devices() {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterZone, setFilterZone] = useState('all');
+  const [selectedQrDevice, setSelectedQrDevice] = useState<Device | null>(null);
+
+  const downloadQR = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${filename}_QR.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      toast.error('Failed to download QR code');
+    }
+  };
+
+  const handleDeviceRowClick = (device: Device) => {
+    if (device.isActive && device.qrSignedUrl) {
+      setSelectedQrDevice(device);
+    }
+  };
 
   const filteredDevices = devices.filter(d => {
     const matchesSearch = d.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -286,7 +310,15 @@ export default function Devices() {
             </thead>
             <tbody>
               {filteredDevices.map((device) => (
-                <tr key={device.id} style={{ opacity: device.isActive ? 1 : 0.6 }}>
+                <tr 
+                  key={device.id} 
+                  style={{ 
+                    opacity: device.isActive ? 1 : 0.6,
+                    cursor: device.isActive && device.qrSignedUrl ? 'pointer' : 'default'
+                  }}
+                  className={device.isActive && device.qrSignedUrl ? 'table-row-hover' : ''}
+                  onClick={() => handleDeviceRowClick(device)}
+                >
                   <td style={{ fontWeight: 500 }}>{device.serialNumber}</td>
                   <td>{device.deviceType}</td>
                   <td>{device.zone}</td>
@@ -304,26 +336,32 @@ export default function Devices() {
                         className="btn btn-ghost" 
                         title="Download QR" 
                         disabled={!device.isActive || !device.qrSignedUrl}
-                        onClick={() => window.open(device.qrSignedUrl, '_blank')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (device.qrSignedUrl) downloadQR(device.qrSignedUrl, device.serialNumber);
+                        }}
                       >
                         <Download size={18} />
                       </button>
                       <button 
                         className="btn btn-ghost" 
                         title="View Audit History"
-                        onClick={() => fetchAudits(device)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetchAudits(device);
+                        }}
                       >
                         <History size={18} />
                       </button>
                       {device.isActive ? (
-                        <button className="btn btn-ghost" title="Decommission" onClick={() => handleDelete(device.id)} style={{ color: 'var(--danger)' }}>
+                        <button className="btn btn-ghost" title="Decommission" onClick={(e) => { e.stopPropagation(); handleDelete(device.id); }} style={{ color: 'var(--danger)' }}>
                           <Trash2 size={18} />
                         </button>
-                      ) : userRole === 'ROLE_SUPERADMIN' ? (
-                        <button className="btn btn-ghost" title="Permanently Delete" onClick={() => handlePermanentDelete(device.id)} style={{ color: 'var(--danger)' }}>
+                      ) : (
+                        <button className="btn btn-ghost" title="Permanently Delete" onClick={(e) => { e.stopPropagation(); handlePermanentDelete(device.id); }} style={{ color: 'var(--danger)' }}>
                           <Trash2 size={18} />
                         </button>
-                      ) : null}
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -467,6 +505,37 @@ export default function Devices() {
               </button>
               <button className="btn btn-primary" onClick={confirmDeleteDevice} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
                 Decommission
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedQrDevice && selectedQrDevice.qrSignedUrl && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Device QR Code</h2>
+              <button className="btn btn-ghost" onClick={() => setSelectedQrDevice(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: '2rem 1rem' }}>
+              <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', display: 'inline-block', marginBottom: '1.5rem' }}>
+                <img 
+                  src={selectedQrDevice.qrSignedUrl} 
+                  alt={`QR for ${selectedQrDevice.serialNumber}`} 
+                  style={{ width: '200px', height: '200px', objectFit: 'contain' }}
+                />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>{selectedQrDevice.serialNumber}</h3>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{selectedQrDevice.deviceType} • {selectedQrDevice.zone}</p>
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'center' }}>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => downloadQR(selectedQrDevice.qrSignedUrl!, selectedQrDevice.serialNumber)}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                <Download size={18} /> Download QR Code
               </button>
             </div>
           </div>
