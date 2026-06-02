@@ -302,7 +302,9 @@ export default function DashboardScreen() {
               </View>
               <View style={{ marginLeft: 16, flex: 1 }}>
                 <Text style={styles.activeDevicesTitle}>Devices</Text>
-                <Text style={styles.activeDevicesSubtitle}>{activeDevices.length} devices in your zone</Text>
+                <Text style={styles.activeDevicesSubtitle}>
+                  {activeDevices.filter(d => d.is_active).length} active devices in your zone
+                </Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
             </View>
@@ -810,11 +812,10 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 12px rgba(0,0,0,0.25)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
+    }),
   },
   modalTitle: {
     fontSize: 20,

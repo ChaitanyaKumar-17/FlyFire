@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Button, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Button, SafeAreaView, TouchableOpacity, Platform } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { X } from 'lucide-react-native';
@@ -82,11 +82,10 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 24,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 12px rgba(0,0,0,0.3)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 },
+    }),
   },
   cameraContainer: {
     flex: 1,
