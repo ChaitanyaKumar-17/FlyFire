@@ -4,6 +4,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { supabase } from '../lib/supabase';
+import { clearCache } from '../lib/cache';
 import { ArrowLeft, CheckCircle } from 'lucide-react-native';
 
 type InspectionDetailRouteProp = RouteProp<RootStackParamList, 'InspectionDetail'>;
@@ -87,6 +88,8 @@ export default function InspectionDetailScreen() {
       });
 
       if (error) throw error;
+
+      clearCache();
 
       // Navigate back to Dashboard without blocking on an alert
       navigation.reset({

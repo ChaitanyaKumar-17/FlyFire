@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, Platform, ActivityIndicator, Modal, TextInput, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { getCachedData, setCachedData } from '../lib/cache';
 import { ArrowLeft, Calendar, MapPin, Tag, CheckCircle2, ClipboardList, ChevronDown, FilterX, User } from 'lucide-react-native';
 
 export default function HistoryScreen() {
@@ -25,12 +26,27 @@ export default function HistoryScreen() {
     fetchHistory();
   }, []);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('history');
+      if (cached) {
+        setUserRole(cached.userRole);
+        setInspections(cached.inspections);
+        setLoading(false);
+        return;
+      }
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
 
     const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
-    if (userData) setUserRole(userData.role);
+    let newUserRole = '';
+    
+    if (userData) {
+      newUserRole = userData.role;
+      setUserRole(newUserRole);
+    }
 
     let query = supabase
       .from('inspections')
@@ -55,6 +71,10 @@ export default function HistoryScreen() {
 
     if (data) {
       setInspections(data);
+      setCachedData('history', {
+        userRole: newUserRole,
+        inspections: data
+      });
     }
     setLoading(false);
   };

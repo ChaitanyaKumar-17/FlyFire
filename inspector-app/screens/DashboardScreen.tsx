@@ -6,6 +6,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { TempStorage } from './LoginScreen';
+import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
 export default function DashboardScreen() {
   const [userName, setUserName] = useState('');
@@ -28,50 +29,81 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data } = await supabase
-          .from('users')
-          .select('full_name, role, zone_id, is_first_login')
-          .eq('id', session.user.id)
-          .single();
-        if (data) {
-          setUserName(data.full_name);
-          setUserId(session.user.id);
-          
-          if (data.is_first_login && data.role !== 'ROLE_SUPERADMIN') {
-            setIsFirstLoginPrompt(true);
+      const fetchUser = async (forceRefresh = false) => {
+        if (!forceRefresh) {
+          const cached = getCachedData<any>('dashboard');
+          if (cached) {
+            setUserName(cached.userName);
+            setUserId(cached.userId);
+            setActiveDevices(cached.activeDevices);
+            setRecentInspections(cached.recentInspections);
             return;
           }
         }
-        
-        if (data?.zone_id) {
-          const { data: devices } = await supabase
-            .from('devices')
-            .select('id, serial_number, is_active, device_types(name), zones(name)')
-            .eq('zone_id', data.zone_id)
-            .order('registered_at', { ascending: false });
-          if (devices) setActiveDevices(devices);
-        }
-        
-        let query = supabase
-          .from('inspections')
-          .select('id, remark, inspected_at, devices!inner(serial_number, zone_id)')
-          .order('inspected_at', { ascending: false })
-          .limit(5);
 
-        if (data?.role === 'ROLE_SUPERADMIN') {
-          // no filter
-        } else if (data?.role === 'ROLE_ADMIN' && data?.zone_id) {
-          query = query.eq('devices.zone_id', data.zone_id);
-        } else {
-          query = query.eq('inspector_id', session.user.id);
-        }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data } = await supabase
+            .from('users')
+            .select('full_name, role, zone_id, is_first_login')
+            .eq('id', session.user.id)
+            .single();
 
-        const { data: inspections } = await query;
-        if (inspections) setRecentInspections(inspections);
-      }
+          let newUserName = '';
+          let newUserId = session.user.id;
+          let newActiveDevices: any[] = [];
+          let newRecentInspections: any[] = [];
+
+          if (data) {
+            newUserName = data.full_name;
+            setUserName(newUserName);
+            setUserId(newUserId);
+            
+            if (data.is_first_login && data.role !== 'ROLE_SUPERADMIN') {
+              setIsFirstLoginPrompt(true);
+              return;
+            }
+          }
+          
+          if (data?.zone_id) {
+            const { data: devices } = await supabase
+              .from('devices')
+              .select('id, serial_number, is_active, device_types(name), zones(name)')
+              .eq('zone_id', data.zone_id)
+              .order('registered_at', { ascending: false });
+            if (devices) {
+              newActiveDevices = devices;
+              setActiveDevices(devices);
+            }
+          }
+          
+          let query = supabase
+            .from('inspections')
+            .select('id, remark, inspected_at, devices!inner(serial_number, zone_id)')
+            .order('inspected_at', { ascending: false })
+            .limit(5);
+
+          if (data?.role === 'ROLE_SUPERADMIN') {
+            // no filter
+          } else if (data?.role === 'ROLE_ADMIN' && data?.zone_id) {
+            query = query.eq('devices.zone_id', data.zone_id);
+          } else {
+            query = query.eq('inspector_id', session.user.id);
+          }
+
+          const { data: inspections } = await query;
+          if (inspections) {
+            newRecentInspections = inspections;
+            setRecentInspections(inspections);
+          }
+          
+          setCachedData('dashboard', {
+            userName: newUserName,
+            userId: newUserId,
+            activeDevices: newActiveDevices,
+            recentInspections: newRecentInspections
+          });
+        }
     };
     fetchUser();
   }, [])
@@ -83,6 +115,7 @@ export default function DashboardScreen() {
 
   const confirmLogout = async () => {
     setIsLoggingOut(true);
+    clearCache();
     await supabase.auth.signOut();
   };
 
