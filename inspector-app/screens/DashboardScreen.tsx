@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { LogOut, QrCode, Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +21,7 @@ export default function DashboardScreen() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -67,7 +68,7 @@ export default function DashboardScreen() {
   };
 
   const confirmLogout = async () => {
-    setShowLogoutModal(false);
+    setIsLoggingOut(true);
     await supabase.auth.signOut();
   };
 
@@ -194,16 +195,6 @@ export default function DashboardScreen() {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ready to Inspect?</Text>
-          <Text style={styles.cardSubtitle}>Scan a device's QR code to view its details and log a new inspection remark.</Text>
-          
-          <TouchableOpacity style={styles.scanButton} onPress={handleScan}>
-            <QrCode size={24} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.scanButtonText}>Scan QR Code</Text>
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.recentSection}>
           <View style={styles.recentHeader}>
             <Text style={styles.recentTitle}>Recent Inspections</Text>
@@ -212,21 +203,35 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
           
-          {recentInspections.length > 0 ? (
-            recentInspections.map((insp) => (
-              <View key={insp.id} style={styles.inspectionItem}>
-                <View style={styles.inspectionItemHeader}>
-                  <Text style={styles.deviceSerial}>{insp.devices?.serial_number}</Text>
-                  <Text style={styles.inspectionDate}>
-                    {new Date(insp.inspected_at).toLocaleDateString()}
-                  </Text>
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+            {recentInspections.length > 0 ? (
+              recentInspections.map((insp) => (
+                <View key={insp.id} style={styles.inspectionItem}>
+                  <View style={styles.inspectionItemHeader}>
+                    <Text style={styles.deviceSerial}>{insp.devices?.serial_number}</Text>
+                    <Text style={styles.inspectionDate}>
+                      {new Date(insp.inspected_at).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={styles.inspectionRemark} numberOfLines={2}>{insp.remark}</Text>
                 </View>
-                <Text style={styles.inspectionRemark} numberOfLines={2}>{insp.remark}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.noHistoryText}>No recent inspections.</Text>
-          )}
+              ))
+            ) : (
+              <Text style={styles.noHistoryText}>No recent inspections.</Text>
+            )}
+          </ScrollView>
+        </View>
+
+        <View style={styles.bottomCard}>
+          <TouchableOpacity style={styles.modernScanButton} onPress={handleScan}>
+            <View style={styles.scanIconWrapper}>
+              <QrCode size={28} color="#FFFFFF" />
+            </View>
+            <View style={styles.scanTextWrapper}>
+              <Text style={styles.modernScanTitle}>Scan QR Code</Text>
+              <Text style={styles.modernScanSubtitle}>Tap here to log a new inspection</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
       </>
@@ -242,11 +247,15 @@ export default function DashboardScreen() {
             <Text style={styles.modalTitle}>Confirm Log Out</Text>
             <Text style={styles.modalText}>Are you sure you want to log out? You will need to enter your credentials to access the portal again.</Text>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowLogoutModal(false)}>
+              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowLogoutModal(false)} disabled={isLoggingOut}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalLogoutButton} onPress={confirmLogout}>
-                <Text style={styles.modalLogoutText}>Log Out</Text>
+              <TouchableOpacity style={[styles.modalLogoutButton, isLoggingOut && { opacity: 0.7 }]} onPress={confirmLogout} disabled={isLoggingOut}>
+                {isLoggingOut ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalLogoutText}>Log Out</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -289,57 +298,47 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.05)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 3,
-      },
-    }),
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  cardSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  scanButton: {
-    flexDirection: 'row',
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: '100%',
-    justifyContent: 'center',
-  },
-  scanButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
   },
   recentSection: {
-    marginTop: 24,
+    flex: 1,
+  },
+  bottomCard: {
+    marginTop: 16,
+  },
+  modernScanButton: {
+    flexDirection: 'row',
+    backgroundColor: '#1E3A8A',
+    padding: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+    ...Platform.select({
+      web: { boxShadow: '0px 8px 24px rgba(30, 58, 138, 0.25)' },
+      default: { shadowColor: '#1E3A8A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+    }),
+  },
+  scanIconWrapper: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 14,
+    borderRadius: 16,
+    marginRight: 16,
+  },
+  scanTextWrapper: {
+    flex: 1,
+  },
+  modernScanTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  modernScanSubtitle: {
+    color: '#93C5FD',
+    fontSize: 14,
+    fontWeight: '500',
   },
   recentHeader: {
     flexDirection: 'row',

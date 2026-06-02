@@ -33,12 +33,9 @@ export default function ScannerScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Scan Device QR</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
-          <X size={24} color="#111827" />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+        <X size={24} color="#FFFFFF" />
+      </TouchableOpacity>
       <View style={styles.cameraContainer}>
         <CameraView
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
@@ -48,7 +45,13 @@ export default function ScannerScreen() {
           style={StyleSheet.absoluteFillObject}
         />
         <View style={styles.overlay}>
-          <View style={styles.scanBox} />
+          <View style={styles.reticleContainer}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
+          </View>
+          <Text style={styles.overlayText}>Align QR code within the frame</Text>
         </View>
       </View>
       {scanned && (
@@ -67,20 +70,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
   closeButton: {
-    padding: 8,
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    backgroundColor: '#EF4444',
+    padding: 10,
+    borderRadius: 24,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   cameraContainer: {
     flex: 1,
@@ -90,15 +92,56 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  scanBox: {
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
+  reticleContainer: {
+    width: 260,
+    height: 260,
     backgroundColor: 'transparent',
-    borderRadius: 16,
+  },
+  corner: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderColor: '#3B82F6',
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 5,
+    borderLeftWidth: 5,
+    borderTopLeftRadius: 16,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 5,
+    borderRightWidth: 5,
+    borderTopRightRadius: 16,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 5,
+    borderLeftWidth: 5,
+    borderBottomLeftRadius: 16,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 5,
+    borderRightWidth: 5,
+    borderBottomRightRadius: 16,
+  },
+  overlayText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 40,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    overflow: 'hidden',
   },
   footer: {
     position: 'absolute',
