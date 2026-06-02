@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, LogIn } from 'lucide-react';
+import { ShieldAlert, LogIn, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function Login() {
@@ -13,15 +13,31 @@ export default function Login() {
   const [isFirstLoginPrompt, setIsFirstLoginPrompt] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
     try {
+      let loginEmail = username.trim();
+      
+      // If the input doesn't look like an email, assume it's a username and fetch the email
+      if (!loginEmail.includes('@')) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('email')
+          .eq('username', loginEmail)
+          .single();
+          
+        if (userData?.email) {
+          loginEmail = userData.email;
+        }
+      }
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: username,
+        email: loginEmail,
         password: password,
       });
 
@@ -122,15 +138,28 @@ export default function Login() {
             
             <div className="form-group">
               <label className="form-label" htmlFor="password">Password</label>
-              <input 
-                id="password"
-                type="password" 
-                className="form-control" 
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  id="password"
+                  type={showPassword ? 'text' : 'password'} 
+                  className="form-control" 
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ paddingRight: '2.5rem' }}
+                  required
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             
             <button 
@@ -150,16 +179,29 @@ export default function Login() {
             </p>
             <div className="form-group">
               <label className="form-label" htmlFor="newPassword">New Password</label>
-              <input 
-                id="newPassword"
-                type="password" 
-                className="form-control" 
-                placeholder="Enter new password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={6}
-              />
+              <div style={{ position: 'relative' }}>
+                <input 
+                  id="newPassword"
+                  type={showNewPassword ? 'text' : 'password'} 
+                  className="form-control" 
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ paddingRight: '2.5rem' }}
+                  required
+                  minLength={6}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  style={{
+                    position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)'
+                  }}
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <button 
               type="submit" 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, UserMinus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon } from 'lucide-react';
+import { UserPlus, UserMinus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
@@ -27,6 +27,7 @@ export default function Users() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -318,14 +319,27 @@ export default function Users() {
               </div>
               <div className="form-group">
                 <label className="form-label">Temporary Password</label>
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  required 
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  placeholder="Min. 8 chars, 1 uppercase, 1 special"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showPassword ? 'text' : 'password'} 
+                    className="form-control" 
+                    required 
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    placeholder="Min. 8 chars, 1 uppercase, 1 special"
+                    style={{ paddingRight: '2.5rem' }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               
               {userRole === 'ROLE_SUPERADMIN' && (

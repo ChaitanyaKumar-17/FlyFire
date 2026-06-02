@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { LogOut, QrCode } from 'lucide-react-native';
+import { LogOut, QrCode, Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -19,6 +19,8 @@ export default function DashboardScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -133,24 +135,34 @@ export default function DashboardScreen() {
             {errorMessage ? <Text style={{ color: '#EF4444', marginBottom: 12, fontWeight: '500' }}>{errorMessage}</Text> : null}
 
             <Text style={styles.label}>Current Temporary Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter current password"
-              placeholderTextColor="#9CA3AF"
-              secureTextEntry
-              value={oldPassword}
-              onChangeText={setOldPassword}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter current password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showOldPassword}
+                value={oldPassword}
+                onChangeText={setOldPassword}
+              />
+              <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)} style={styles.eyeIcon}>
+                {showOldPassword ? <EyeOff size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
+              </TouchableOpacity>
+            </View>
             
             <Text style={styles.label}>New Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter new password"
-              placeholderTextColor="#9CA3AF"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter new password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry={!showNewPassword}
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+              <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeIcon}>
+                {showNewPassword ? <EyeOff size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity 
               style={[styles.updateButton, isUpdating && styles.updateButtonDisabled]} 
@@ -431,6 +443,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     marginBottom: 20,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#111827',
+  },
+  eyeIcon: {
+    padding: 12,
   },
   updateButton: {
     backgroundColor: '#2563EB',

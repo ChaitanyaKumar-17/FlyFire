@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 export const TempStorage = { password: '' };
@@ -8,6 +9,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -56,14 +58,19 @@ export default function LoginScreen() {
           />
 
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#9CA3AF"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="••••••••"
+              placeholderTextColor="#9CA3AF"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              {showPassword ? <EyeOff size={20} color="#9CA3AF" /> : <Eye size={20} color="#9CA3AF" />}
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity 
             style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
@@ -139,11 +146,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
-    paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     color: '#111827',
     marginBottom: 20,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#111827',
+  },
+  eyeIcon: {
+    padding: 12,
   },
   loginButton: {
     backgroundColor: '#2563EB',
