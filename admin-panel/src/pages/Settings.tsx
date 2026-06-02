@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MapPin, Tag, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
 interface Zone {
   id: string;
@@ -30,7 +31,17 @@ export default function Settings() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('settings');
+      if (cached) {
+        setZones(cached.zones);
+        setDeviceTypes(cached.deviceTypes);
+        setLoading(false);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const [zonesRes, typesRes] = await Promise.all([
@@ -40,6 +51,11 @@ export default function Settings() {
       
       if (zonesRes.data) setZones(zonesRes.data);
       if (typesRes.data) setDeviceTypes(typesRes.data);
+      
+      setCachedData('settings', {
+        zones: zonesRes.data || [],
+        deviceTypes: typesRes.data || []
+      });
     } catch (error) {
       console.error('Error fetching settings data:', error);
     } finally {
@@ -65,7 +81,8 @@ export default function Settings() {
       if (response.ok) {
         setNewZone('');
         toast.success('Zone created successfully!');
-        fetchData();
+        clearCache(); // clear everything since settings affect filters
+        fetchData(true);
       } else {
         const err = await response.json().catch(()=>({}));
         toast.error(err.error || 'Failed to create zone');
@@ -93,7 +110,8 @@ export default function Settings() {
       if (response.ok) {
         setNewDeviceType('');
         toast.success('Device type created successfully!');
-        fetchData();
+        clearCache(); // clear everything since settings affect filters
+        fetchData(true);
       } else {
         const err = await response.json().catch(()=>({}));
         toast.error(err.error || 'Failed to create device type');
@@ -115,7 +133,8 @@ export default function Settings() {
       });
       if (response.ok) {
         toast.success('Zone deleted successfully!');
-        fetchData();
+        clearCache();
+        fetchData(true);
       } else {
         const err = await response.json().catch(()=>({}));
         toast.error(err.error || 'Failed to delete zone');
@@ -141,7 +160,8 @@ export default function Settings() {
       });
       if (response.ok) {
         toast.success('Device type deleted successfully!');
-        fetchData();
+        clearCache();
+        fetchData(true);
       } else {
         const err = await response.json().catch(()=>({}));
         toast.error(err.error || 'Failed to delete device type');

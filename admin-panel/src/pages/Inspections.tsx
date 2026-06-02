@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { History, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
 export default function Inspections() {
   const [inspections, setInspections] = useState<any[]>([]);
@@ -14,7 +15,18 @@ export default function Inspections() {
   const [userRole, setUserRole] = useState('');
   const [inspectionToDelete, setInspectionToDelete] = useState<string | null>(null);
 
-  const fetchInspections = async () => {
+  const fetchInspections = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('inspections');
+      if (cached) {
+        setInspections(cached.inspections);
+        setZones(cached.zones);
+        setUserRole(cached.userRole);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -44,6 +56,12 @@ export default function Inspections() {
       
       if (data) {
         setInspections(data);
+        
+        setCachedData('inspections', {
+          inspections: data,
+          zones: zonesData || [],
+          userRole: userData?.role || ''
+        });
       }
     } catch (error) {
       console.error('Error fetching inspections:', error);
@@ -64,7 +82,9 @@ export default function Inspections() {
       const { error } = await supabase.from('inspections').delete().eq('id', id);
       if (error) throw error;
       toast.success('Inspection record permanently deleted!');
-      fetchInspections(); // Refresh the list
+      clearCache('inspections');
+      clearCache('dashboard');
+      fetchInspections(true);
     } catch (error: any) {
       toast.error('Error deleting inspection: ' + error.message);
     }

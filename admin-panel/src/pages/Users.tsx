@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { UserPlus, UserMinus, ShieldAlert, Trash2, Edit2, Search, Users as UsersIcon, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
+import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
 interface User {
   id: string;
@@ -48,7 +49,19 @@ export default function Users() {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('users');
+      if (cached) {
+        setUsers(cached.users);
+        setZones(cached.zones);
+        setUserRole(cached.userRole);
+        setCurrentUserId(cached.currentUserId);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -85,6 +98,13 @@ export default function Users() {
           isEnabled: u.is_enabled
         }));
         setUsers(mappedUsers);
+        
+        setCachedData('users', {
+          users: mappedUsers,
+          zones: zonesData || [],
+          userRole: userData?.role || '',
+          currentUserId: session.user.id
+        });
       }
     } catch (error: any) {
       console.error('Error fetching users:', error);
@@ -121,10 +141,12 @@ export default function Users() {
         throw new Error(errorData.error || `Backend returned status ${response.status}`);
       }
 
-      setIsModalOpen(false);
+      toast.success('User registered successfully');
       setNewUser({ fullName: '', username: '', email: '', password: '', role: 'ROLE_USER', zoneId: '' });
-      toast.success('User registered successfully!');
-      fetchUsers();
+      setIsModalOpen(false);
+      clearCache('users');
+      clearCache('dashboard');
+      fetchUsers(true);
     } catch (error: any) {
       toast.error(error.message || 'Error registering user');
     }
@@ -215,7 +237,12 @@ export default function Users() {
       </div>
 
       <div className="card">
-        <div className="table-container">
+        {loading ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading users...
+          </div>
+        ) : (
+          <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
@@ -276,7 +303,8 @@ export default function Users() {
               )}
             </tbody>
           </table>
-        </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (

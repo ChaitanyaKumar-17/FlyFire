@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { QrCode, ShieldCheck, Users, Map, UserCog } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -13,12 +14,25 @@ export default function Dashboard() {
   const [recentInspections, setRecentInspections] = useState<any[]>([]);
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('dashboard');
+      if (cached) {
+        setStats(cached.stats);
+        setRecentInspections(cached.recentInspections);
+        setUserName(cached.userName);
+        setUserRole(cached.userRole);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -73,8 +87,23 @@ export default function Dashboard() {
       if (recentInsps) {
         setRecentInspections(recentInsps);
       }
+
+      setCachedData('dashboard', {
+        stats: {
+          totalDevices: devicesCount || 0,
+          totalInspections: inspectionsCount || 0,
+          activeInspectors: inspectorsCount || 0,
+          totalAdmins: adminsCount || 0,
+          totalZones: zonesCount || 0
+        },
+        recentInspections: recentInsps || [],
+        userName: userData?.full_name || '',
+        userRole: userData?.role || ''
+      });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,7 +116,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="stats-grid">
+      {loading ? (
+        <div className="card" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Loading dashboard data...
+        </div>
+      ) : (
+        <>
+          <div className="stats-grid">
         <div className="card stat-card">
           <div className="stat-icon">
             <QrCode size={24} />
@@ -181,6 +216,8 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

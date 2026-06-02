@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Download, Trash2, Search, History, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
+import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
 interface Device {
   id: string;
@@ -44,7 +45,19 @@ export default function Devices() {
     fetchDevices();
   }, []);
 
-  const fetchDevices = async () => {
+  const fetchDevices = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('devices');
+      if (cached) {
+        setDevices(cached.devices);
+        setDeviceTypes(cached.deviceTypes);
+        setZones(cached.zones);
+        setUserRole(cached.userRole);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -84,6 +97,13 @@ export default function Devices() {
           qrSignedUrl: d.qr_signed_url
         }));
         setDevices(mappedDevices);
+        
+        setCachedData('devices', {
+          devices: mappedDevices,
+          deviceTypes: typesRes.data || [],
+          zones: zonesRes.data || [],
+          userRole: userData?.role || ''
+        });
       }
     } catch (error) {
       console.error('Error fetching devices:', error);
@@ -130,10 +150,12 @@ export default function Devices() {
         throw new Error(errorData.error || `Backend returned status ${response.status}`);
       }
       
-      setIsModalOpen(false);
+      toast.success('Device registered successfully');
       setNewDevice({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
-      toast.success('Device registered successfully!');
-      fetchDevices(); // Refresh list to see the new device with its QR code
+      setIsModalOpen(false);
+      clearCache('devices');
+      clearCache('dashboard');
+      fetchDevices(true);
     } catch (error: any) {
       toast.error(error.message || 'Error registering device');
     }
@@ -151,8 +173,11 @@ export default function Devices() {
         
       if (error) throw error;
       
-      toast.success('Device decommissioned successfully!');
-      fetchDevices();
+      toast.success('Device decommissioned completely.');
+      setDeviceToDelete(null);
+      clearCache('devices');
+      clearCache('dashboard');
+      fetchDevices(true);
     } catch (error: any) {
       toast.error(error.message || 'Error decommissioning device');
     }
@@ -242,7 +267,12 @@ export default function Devices() {
       </div>
 
       <div className="card">
-        <div className="table-container">
+        {loading ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading devices...
+          </div>
+        ) : (
+          <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
@@ -308,7 +338,8 @@ export default function Devices() {
               )}
             </tbody>
           </table>
-        </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
