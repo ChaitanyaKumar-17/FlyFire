@@ -29,6 +29,8 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [zoneToDelete, setZoneToDelete] = useState<string | null>(null);
   const [deviceTypeToDelete, setDeviceTypeToDelete] = useState<string | null>(null);
+  const [isSubmittingZone, setIsSubmittingZone] = useState(false);
+  const [isSubmittingType, setIsSubmittingType] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -82,6 +84,7 @@ export default function Settings() {
   const handleCreateZone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newZone.trim()) return;
+    setIsSubmittingZone(true);
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -105,12 +108,15 @@ export default function Settings() {
       }
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setIsSubmittingZone(false);
     }
   };
 
   const handleCreateDeviceType = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDeviceType.trim()) return;
+    setIsSubmittingType(true);
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -134,6 +140,8 @@ export default function Settings() {
       }
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setIsSubmittingType(false);
     }
   };
 
@@ -218,8 +226,12 @@ export default function Settings() {
               onChange={(e) => setNewZone(e.target.value)}
               required
             />
-            <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
-              <Plus size={18} /> Add Zone
+            <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }} disabled={isSubmittingZone}>
+              {isSubmittingZone ? (
+                <><div className="animate-spin" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} /> Adding...</>
+              ) : (
+                <><Plus size={18} /> Add Zone</>
+              )}
             </button>
           </form>
 
@@ -268,8 +280,12 @@ export default function Settings() {
               onChange={(e) => setNewDeviceType(e.target.value)}
               required
             />
-            <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
-              <Plus size={18} /> Add Type
+            <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }} disabled={isSubmittingType}>
+              {isSubmittingType ? (
+                <><div className="animate-spin" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} /> Adding...</>
+              ) : (
+                <><Plus size={18} /> Add Type</>
+              )}
             </button>
           </form>
 

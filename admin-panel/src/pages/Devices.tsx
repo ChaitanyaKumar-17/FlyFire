@@ -24,6 +24,7 @@ export default function Devices() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDevice, setNewDevice] = useState({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
   const [auditDevice, setAuditDevice] = useState<Device | null>(null);
   const [audits, setAudits] = useState<any[]>([]);
@@ -149,6 +150,7 @@ export default function Devices() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       // 1. Get the current active session for the JWT token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No active session found.");
@@ -182,6 +184,8 @@ export default function Devices() {
       fetchDevices(true);
     } catch (error: any) {
       toast.error(error.message || 'Error registering device');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -439,8 +443,14 @@ export default function Devices() {
                 ></textarea>
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Register Device</button>
+                <button type="button" className="btn btn-ghost" disabled={isSubmitting} onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <><div className="animate-spin" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} /> Registering...</>
+                  ) : (
+                    "Register Device"
+                  )}
+                </button>
               </div>
             </form>
           </div>

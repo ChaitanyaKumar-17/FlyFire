@@ -39,6 +39,7 @@ export default function Users() {
   const [userInspections, setUserInspections] = useState<any[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredUsers = users.filter(u => {
     const searchLower = searchQuery.toLowerCase();
@@ -122,6 +123,7 @@ export default function Users() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsSubmitting(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No active session found.");
 
@@ -154,6 +156,8 @@ export default function Users() {
       fetchUsers(true);
     } catch (error: any) {
       toast.error(error.message || 'Error registering user');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -455,8 +459,14 @@ export default function Users() {
                 </>
               )}
               <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create User</button>
+                <button type="button" className="btn btn-ghost" disabled={isSubmitting} onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <><div className="animate-spin" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} /> Creating...</>
+                  ) : (
+                    "Create User"
+                  )}
+                </button>
               </div>
             </form>
           </div>
