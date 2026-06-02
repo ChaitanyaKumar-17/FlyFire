@@ -18,6 +18,7 @@ export default function InspectionDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDeviceDetails();
@@ -62,13 +63,15 @@ export default function InspectionDetailScreen() {
   };
 
   const handleSubmit = async () => {
+    setSubmitError(null);
+    
     if (remark.trim().length < 10) {
-      Alert.alert('Validation Error', 'Inspection remark must be at least 10 characters long.');
+      setSubmitError('Inspection remark must be at least 10 characters long.');
       return;
     }
 
     if (!device?.is_active) {
-      Alert.alert('Error', 'Cannot inspect a decommissioned device.');
+      setSubmitError('Cannot inspect a decommissioned device.');
       return;
     }
 
@@ -85,17 +88,13 @@ export default function InspectionDetailScreen() {
 
       if (error) throw error;
 
-      Alert.alert('Success', 'Inspection recorded successfully!', [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            navigation.navigate('Dashboard' as never);
-          }
-        }
-      ], { cancelable: false });
+      // Navigate back to Dashboard without blocking on an alert
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Dashboard' as never }],
+      });
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to submit inspection. ' + error.message);
-    } finally {
+      setSubmitError('Failed to submit inspection. ' + (error.message || ''));
       setSubmitting(false);
     }
   };
@@ -182,6 +181,12 @@ export default function InspectionDetailScreen() {
               editable={!submitting && device.is_active}
               textAlignVertical="top"
             />
+            
+            {submitError && (
+              <Text style={{ color: '#EF4444', marginBottom: 12, fontWeight: '500' }}>
+                {submitError}
+              </Text>
+            )}
 
             <TouchableOpacity 
               style={[styles.submitButton, (submitting || !device.is_active) && styles.submitButtonDisabled]} 

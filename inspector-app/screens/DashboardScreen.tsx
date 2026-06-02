@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { LogOut, QrCode, Eye, EyeOff, ChevronRight, ShieldCheck } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { TempStorage } from './LoginScreen';
@@ -26,8 +26,9 @@ export default function DashboardScreen() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showDevicesModal, setShowDevicesModal] = useState(false);
 
-  useEffect(() => {
-    const fetchUser = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data } = await supabase
@@ -73,7 +74,8 @@ export default function DashboardScreen() {
       }
     };
     fetchUser();
-  }, []);
+  }, [])
+);
 
   const handleLogout = () => {
     setShowLogoutModal(true);

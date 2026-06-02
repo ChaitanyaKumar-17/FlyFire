@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Button, SafeAreaView, TouchableOpacity } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { X } from 'lucide-react-native';
 
 export default function ScannerScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -38,13 +39,15 @@ export default function ScannerScreen() {
         <X size={24} color="#FFFFFF" />
       </TouchableOpacity>
       <View style={styles.cameraContainer}>
-        <CameraView
-          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
-          }}
-          style={StyleSheet.absoluteFill}
-        />
+        {isFocused && (
+          <CameraView
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View style={styles.overlay}>
           <View style={styles.reticleContainer}>
             <View style={[styles.corner, styles.topLeft]} />
