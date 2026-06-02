@@ -1,14 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, Platform, ActivityIndicator, Modal, TextInput, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Calendar, MapPin, Tag, CheckCircle2, ClipboardList } from 'lucide-react-native';
+import { ArrowLeft, Calendar, MapPin, Tag, CheckCircle2, ClipboardList, ChevronDown, FilterX, User } from 'lucide-react-native';
 
 export default function HistoryScreen() {
   const navigation = useNavigation();
   const [inspections, setInspections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState('');
+  
+  const [selectedDeviceType, setSelectedDeviceType] = useState<string | null>(null);
+  const [selectedInspector, setSelectedInspector] = useState<string | null>(null);
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
+  const [showDeviceFilter, setShowDeviceFilter] = useState(false);
+  const [showInspectorFilter, setShowInspectorFilter] = useState(false);
+  const [showZoneFilter, setShowZoneFilter] = useState(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -27,7 +38,8 @@ export default function HistoryScreen() {
         id,
         remark,
         inspected_at,
-        devices!inner(serial_number, zone_id, device_types(name), zones(name))
+        devices!inner(serial_number, zone_id, device_types(name), zones(name)),
+        users(full_name)
       `)
       .order('inspected_at', { ascending: false });
 
@@ -47,6 +59,39 @@ export default function HistoryScreen() {
     setLoading(false);
   };
 
+  const filteredInspections = useMemo(() => {
+    return inspections.filter(item => {
+      let match = true;
+      if (selectedDeviceType && item.devices?.device_types?.name !== selectedDeviceType) {
+        match = false;
+      }
+      if (selectedInspector && item.users?.full_name !== selectedInspector) {
+        match = false;
+      }
+      if (selectedZone && item.devices?.zones?.name !== selectedZone) {
+        match = false;
+      }
+      if (startDate) {
+        const itemDate = new Date(item.inspected_at);
+        const sDate = new Date(startDate);
+        if (!isNaN(sDate.getTime()) && itemDate < sDate) match = false;
+      }
+      if (endDate) {
+        const itemDate = new Date(item.inspected_at);
+        const eDate = new Date(endDate);
+        if (!isNaN(eDate.getTime())) {
+          eDate.setHours(23, 59, 59, 999);
+          if (itemDate > eDate) match = false;
+        }
+      }
+      return match;
+    });
+  }, [inspections, selectedDeviceType, selectedInspector, selectedZone, startDate, endDate]);
+
+  const uniqueDeviceTypes = Array.from(new Set(inspections.map(i => i.devices?.device_types?.name).filter(Boolean))) as string[];
+  const uniqueInspectors = Array.from(new Set(inspections.map(i => i.users?.full_name).filter(Boolean))) as string[];
+  const uniqueZones = Array.from(new Set(inspections.map(i => i.devices?.zones?.name).filter(Boolean))) as string[];
+
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -62,16 +107,22 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      <View style={styles.badgeRow}>
-        <View style={styles.badge}>
-          <Tag size={12} color="#4F46E5" style={{ marginRight: 4 }} />
-          <Text style={styles.badgeText}>{item.devices?.device_types?.name}</Text>
+        <View style={styles.badgeRow}>
+          <View style={styles.badge}>
+            <Tag size={12} color="#4F46E5" style={{ marginRight: 4 }} />
+            <Text style={styles.badgeText}>{item.devices?.device_types?.name}</Text>
+          </View>
+          <View style={styles.badge}>
+            <MapPin size={12} color="#4F46E5" style={{ marginRight: 4 }} />
+            <Text style={styles.badgeText}>{item.devices?.zones?.name}</Text>
+          </View>
+          {(userRole === 'ROLE_ADMIN' || userRole === 'ROLE_SUPERADMIN') && item.users?.full_name && (
+            <View style={styles.badge}>
+              <User size={12} color="#4F46E5" style={{ marginRight: 4 }} />
+              <Text style={styles.badgeText}>{item.users?.full_name}</Text>
+            </View>
+          )}
         </View>
-        <View style={styles.badge}>
-          <MapPin size={12} color="#4F46E5" style={{ marginRight: 4 }} />
-          <Text style={styles.badgeText}>{item.devices?.zones?.name}</Text>
-        </View>
-      </View>
 
       <View style={styles.remarkContainer}>
         <Text style={styles.remarkLabel}>Inspector Findings</Text>
@@ -95,10 +146,78 @@ export default function HistoryScreen() {
               {userRole === 'ROLE_SUPERADMIN' ? 'All Inspections' : userRole === 'ROLE_ADMIN' ? 'Zone Inspections' : 'My Inspections'}
             </Text>
             <Text style={styles.headerSubtitle}>
-              {loading ? 'Loading records...' : `${inspections.length} total records found`}
+              {loading ? 'Loading records...' : `${filteredInspections.length} total records found`}
             </Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          <TouchableOpacity 
+            style={[styles.filterChip, selectedDeviceType ? styles.filterChipActive : null]} 
+            onPress={() => setShowDeviceFilter(true)}
+          >
+            <Tag size={14} color={selectedDeviceType ? "#FFFFFF" : "#6B7280"} />
+            <Text style={[styles.filterChipText, selectedDeviceType ? styles.filterChipTextActive : null]}>
+              {selectedDeviceType || 'All Device Types'}
+            </Text>
+            <ChevronDown size={14} color={selectedDeviceType ? "#FFFFFF" : "#6B7280"} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.filterChip, (startDate || endDate) ? styles.filterChipActive : null]} 
+            onPress={() => setShowDateFilter(true)}
+          >
+            <Calendar size={14} color={(startDate || endDate) ? "#FFFFFF" : "#6B7280"} />
+            <Text style={[styles.filterChipText, (startDate || endDate) ? styles.filterChipTextActive : null]}>
+              {(startDate || endDate) ? `${startDate || 'Start'} to ${endDate || 'End'}` : 'All Dates'}
+            </Text>
+            <ChevronDown size={14} color={(startDate || endDate) ? "#FFFFFF" : "#6B7280"} />
+          </TouchableOpacity>
+
+          {(userRole === 'ROLE_ADMIN' || userRole === 'ROLE_SUPERADMIN') && (
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedInspector ? styles.filterChipActive : null]} 
+              onPress={() => setShowInspectorFilter(true)}
+            >
+              <User size={14} color={selectedInspector ? "#FFFFFF" : "#6B7280"} />
+              <Text style={[styles.filterChipText, selectedInspector ? styles.filterChipTextActive : null]}>
+                {selectedInspector || 'All Inspectors'}
+              </Text>
+              <ChevronDown size={14} color={selectedInspector ? "#FFFFFF" : "#6B7280"} />
+            </TouchableOpacity>
+          )}
+
+          {userRole === 'ROLE_SUPERADMIN' && (
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedZone ? styles.filterChipActive : null]} 
+              onPress={() => setShowZoneFilter(true)}
+            >
+              <MapPin size={14} color={selectedZone ? "#FFFFFF" : "#6B7280"} />
+              <Text style={[styles.filterChipText, selectedZone ? styles.filterChipTextActive : null]}>
+                {selectedZone || 'All Zones'}
+              </Text>
+              <ChevronDown size={14} color={selectedZone ? "#FFFFFF" : "#6B7280"} />
+            </TouchableOpacity>
+          )}
+
+          {(selectedDeviceType || selectedInspector || selectedZone || startDate || endDate) ? (
+            <TouchableOpacity 
+              style={styles.clearFilterButton} 
+              onPress={() => { 
+                setSelectedDeviceType(null); 
+                setSelectedInspector(null);
+                setSelectedZone(null);
+                setStartDate(''); 
+                setEndDate(''); 
+              }}
+            >
+              <FilterX size={14} color="#EF4444" />
+              <Text style={styles.clearFilterText}>Clear</Text>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
       </View>
 
       {loading ? (
@@ -107,7 +226,7 @@ export default function HistoryScreen() {
         </View>
       ) : (
         <FlatList
-          data={inspections}
+          data={filteredInspections}
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
@@ -118,6 +237,144 @@ export default function HistoryScreen() {
           }
         />
       )}
+
+      <Modal visible={showDeviceFilter} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Device Type</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              <TouchableOpacity 
+                style={[styles.modalItem, !selectedDeviceType && styles.modalItemActive]}
+                onPress={() => { setSelectedDeviceType(null); setShowDeviceFilter(false); }}
+              >
+                <Text style={!selectedDeviceType ? styles.modalItemTextActive : styles.modalItemText}>All Device Types</Text>
+              </TouchableOpacity>
+              {uniqueDeviceTypes.map(type => (
+                <TouchableOpacity 
+                  key={type} 
+                  style={[styles.modalItem, selectedDeviceType === type && styles.modalItemActive]}
+                  onPress={() => { setSelectedDeviceType(type); setShowDeviceFilter(false); }}
+                >
+                  <Text style={selectedDeviceType === type ? styles.modalItemTextActive : styles.modalItemText}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowDeviceFilter(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showInspectorFilter} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Inspector</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              <TouchableOpacity 
+                style={[styles.modalItem, !selectedInspector && styles.modalItemActive]}
+                onPress={() => { setSelectedInspector(null); setShowInspectorFilter(false); }}
+              >
+                <Text style={!selectedInspector ? styles.modalItemTextActive : styles.modalItemText}>All Inspectors</Text>
+              </TouchableOpacity>
+              {uniqueInspectors.map(inspector => (
+                <TouchableOpacity 
+                  key={inspector} 
+                  style={[styles.modalItem, selectedInspector === inspector && styles.modalItemActive]}
+                  onPress={() => { setSelectedInspector(inspector); setShowInspectorFilter(false); }}
+                >
+                  <Text style={selectedInspector === inspector ? styles.modalItemTextActive : styles.modalItemText}>{inspector}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowInspectorFilter(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showZoneFilter} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Zone</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              <TouchableOpacity 
+                style={[styles.modalItem, !selectedZone && styles.modalItemActive]}
+                onPress={() => { setSelectedZone(null); setShowZoneFilter(false); }}
+              >
+                <Text style={!selectedZone ? styles.modalItemTextActive : styles.modalItemText}>All Zones</Text>
+              </TouchableOpacity>
+              {uniqueZones.map(zone => (
+                <TouchableOpacity 
+                  key={zone} 
+                  style={[styles.modalItem, selectedZone === zone && styles.modalItemActive]}
+                  onPress={() => { setSelectedZone(zone); setShowZoneFilter(false); }}
+                >
+                  <Text style={selectedZone === zone ? styles.modalItemTextActive : styles.modalItemText}>{zone}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowZoneFilter(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showDateFilter} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Filter by Date</Text>
+            <View style={styles.dateInputContainer}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.dateLabel}>Start Date</Text>
+                <TextInput 
+                  style={styles.dateInput} 
+                  placeholder="YYYY-MM-DD" 
+                  value={startDate} 
+                  onChangeText={setStartDate} 
+                />
+              </View>
+              <View style={{ width: 16 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.dateLabel}>End Date</Text>
+                <TextInput 
+                  style={styles.dateInput} 
+                  placeholder="YYYY-MM-DD" 
+                  value={endDate} 
+                  onChangeText={setEndDate} 
+                />
+              </View>
+            </View>
+            <View style={styles.presetDates}>
+              <TouchableOpacity style={styles.presetButton} onPress={() => {
+                const d = new Date(); d.setDate(d.getDate() - 7);
+                setStartDate(d.toISOString().split('T')[0]);
+                setEndDate(new Date().toISOString().split('T')[0]);
+              }}>
+                <Text style={styles.presetText}>Last 7 Days</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.presetButton} onPress={() => {
+                const d = new Date(); d.setDate(d.getDate() - 30);
+                setStartDate(d.toISOString().split('T')[0]);
+                setEndDate(new Date().toISOString().split('T')[0]);
+              }}>
+                <Text style={styles.presetText}>Last 30 Days</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', marginTop: 24, gap: 12 }}>
+              <TouchableOpacity style={[styles.modalCloseButton, { flex: 1, backgroundColor: '#F3F4F6', marginTop: 0 }]} onPress={() => setShowDateFilter(false)}>
+                <Text style={[styles.modalCloseText, { color: '#4B5563' }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalCloseButton, { flex: 1, backgroundColor: '#1E3A8A', marginTop: 0 }]} onPress={() => setShowDateFilter(false)}>
+                <Text style={[styles.modalCloseText, { color: '#FFFFFF' }]}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -224,6 +481,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
     paddingBottom: 16,
+    flexWrap: 'wrap',
   },
   badge: {
     flexDirection: 'row',
@@ -264,5 +522,135 @@ const styles = StyleSheet.create({
     marginTop: 40,
     fontSize: 16,
     fontWeight: '500',
+  },
+  filterBar: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: '#1E3A8A',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  clearFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  clearFilterText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  modalItem: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalItemActive: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderBottomWidth: 0,
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#4B5563',
+  },
+  modalItemTextActive: {
+    fontSize: 16,
+    color: '#1E3A8A',
+    fontWeight: 'bold',
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4B5563',
+  },
+  dateInputContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  dateInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  presetDates: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  presetButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+  },
+  presetText: {
+    fontSize: 12,
+    color: '#1E3A8A',
+    fontWeight: '600',
   },
 });
