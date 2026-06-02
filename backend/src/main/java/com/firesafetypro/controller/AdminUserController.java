@@ -159,4 +159,44 @@ public class AdminUserController {
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to delete user: " + e.getMessage()));
         }
     }
+
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> resetUserPassword(@PathVariable UUID id, @RequestBody Map<String, String> payload, @AuthenticationPrincipal Jwt jwt) {
+        String requesterIdStr = jwt.getClaimAsString("sub");
+        if (requesterIdStr == null) return ResponseEntity.status(401).build();
+
+        String newPassword = payload.get("password");
+        if (newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password is required."));
+        }
+
+        User requester = userRepository.findById(UUID.fromString(requesterIdStr)).orElse(null);
+        User targetUser = userRepository.findById(id).orElse(null);
+
+        if (requester == null || targetUser == null) return ResponseEntity.notFound().build();
+
+        // Permission check
+        if (requester.getRole() == UserRole.ROLE_ADMIN) {
+            if (targetUser.getRole() == UserRole.ROLE_SUPERADMIN || targetUser.getRole() == UserRole.ROLE_ADMIN) {
+                return ResponseEntity.status(403).body(Map.of("error", "Admins can only reset passwords for normal users."));
+            }
+            if (!requester.getZone().getId().equals(targetUser.getZone().getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Cannot reset passwords for users outside your zone."));
+            }
+        } else if (requester.getRole() != UserRole.ROLE_SUPERADMIN) {
+            return ResponseEntity.status(403).body(Map.of("error", "Insufficient permissions."));
+        }
+
+        try {
+            authService.resetAuthUserPassword(id.toString(), newPassword);
+            
+            // Force user to change password on next login
+            targetUser.setIsFirstLogin(true);
+            userRepository.save(targetUser);
+
+            return ResponseEntity.ok(Map.of("message", "Password reset successfully. User must change it on next login."));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to reset password: " + e.getMessage()));
+        }
+    }
 }

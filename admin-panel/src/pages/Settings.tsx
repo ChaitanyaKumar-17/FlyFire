@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MapPin, Tag, Plus, Trash2 } from 'lucide-react';
+import { MapPin, Tag, Plus, Trash2, Lock, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
@@ -22,6 +22,9 @@ export default function Settings() {
   
   const [newZone, setNewZone] = useState('');
   const [newDeviceType, setNewDeviceType] = useState('');
+  
+  const [myNewPassword, setMyNewPassword] = useState('');
+  const [showMyPassword, setShowMyPassword] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [zoneToDelete, setZoneToDelete] = useState<string | null>(null);
@@ -60,6 +63,19 @@ export default function Settings() {
       console.error('Error fetching settings data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateMyPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!myNewPassword.trim()) return;
+    try {
+      const { error } = await supabase.auth.updateUser({ password: myNewPassword });
+      if (error) throw error;
+      toast.success('Your password has been updated successfully!');
+      setMyNewPassword('');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update password');
     }
   };
 
@@ -286,6 +302,43 @@ export default function Settings() {
           </div>
         </div>
 
+      </div>
+
+      {/* Account Settings Panel */}
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <Lock size={24} style={{ color: 'var(--primary)' }} />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Account Security</h2>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Change your account password. This will take effect immediately.</p>
+        
+        <form onSubmit={handleUpdateMyPassword} style={{ maxWidth: '400px' }}>
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label">New Password</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type={showMyPassword ? 'text' : 'password'} 
+                className="form-control" 
+                required 
+                value={myNewPassword}
+                onChange={(e) => setMyNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowMyPassword(!showMyPassword)}
+                style={{
+                  position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)'
+                }}
+              >
+                {showMyPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary">Update Password</button>
+        </form>
       </div>
 
       {zoneToDelete && (

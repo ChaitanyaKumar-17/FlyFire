@@ -35,6 +35,11 @@ export default function Users() {
   const [filterRole, setFilterRole] = useState('all');
   const [filterZone, setFilterZone] = useState('all');
 
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userInspections, setUserInspections] = useState<any[]>([]);
+  const [newPassword, setNewPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+
   const filteredUsers = users.filter(u => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = (u.fullName || '').toLowerCase().includes(searchLower) || 
@@ -183,6 +188,45 @@ export default function Users() {
     setUserToDelete(id);
   };
 
+  const fetchUserInspections = async (userId: string) => {
+    const { data } = await supabase
+      .from('inspections')
+      .select('*, devices(serial_number, device_types(name))')
+      .eq('inspector_id', userId)
+      .order('inspected_at', { ascending: false });
+    setUserInspections(data || []);
+  };
+
+  const handleRowClick = (user: User) => {
+    setSelectedUser(user);
+    fetchUserInspections(user.id);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`http://localhost:8080/api/admin/users/${selectedUser.id}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ password: newPassword })
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to reset password`);
+      }
+      toast.success('Password reset successfully!');
+      setNewPassword('');
+      setShowResetPassword(false);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -257,7 +301,12 @@ export default function Users() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.id} style={{ opacity: user.isEnabled ? 1 : 0.6 }}>
+                <tr 
+                  key={user.id} 
+                  style={{ opacity: user.isEnabled ? 1 : 0.6, cursor: 'pointer' }}
+                  onClick={() => handleRowClick(user)}
+                  className="table-row-hover"
+                >
                   <td style={{ fontWeight: 500 }}>{user.fullName}</td>
                   <td>@{user.username}</td>
                   <td>{user.email}</td>
@@ -286,7 +335,12 @@ export default function Users() {
                   </td>
                   <td>
                     {user.isEnabled && user.role !== 'ROLE_SUPERADMIN' && user.id !== currentUserId && (
-                      <button className="btn btn-ghost" title="Disable User" onClick={() => handleDisable(user.id)} style={{ color: 'var(--danger)' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        title="Disable User" 
+                        onClick={(e) => { e.stopPropagation(); handleDisable(user.id); }} 
+                        style={{ color: 'var(--danger)' }}
+                      >
                         <UserMinus size={18} />
                       </button>
                     )}
@@ -426,6 +480,104 @@ export default function Users() {
               <button className="btn btn-primary" onClick={confirmDeleteUser} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
                 Delete User
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">{selectedUser.fullName}'s Profile</h2>
+              <button className="btn btn-ghost" onClick={() => { setSelectedUser(null); setShowResetPassword(false); }}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                <div><strong>Role:</strong> {selectedUser.role.replace('ROLE_', '')}</div>
+                <div><strong>Zone:</strong> {selectedUser.zone}</div>
+                <div><strong>Email:</strong> {selectedUser.email}</div>
+                <div><strong>Username:</strong> @{selectedUser.username}</div>
+              </div>
+
+              {selectedUser.id !== currentUserId && (
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0 }}>Password Management</h3>
+                    {!showResetPassword && (
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}
+                        onClick={() => setShowResetPassword(true)}
+                      >
+                        Reset Password
+                      </button>
+                    )}
+                  </div>
+                  {showResetPassword && (
+                    <form onSubmit={handleResetPassword} style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>
+                      <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">New Password</label>
+                        <div style={{ position: 'relative' }}>
+                          <input 
+                            type={showPassword ? 'text' : 'password'} 
+                            className="form-control" 
+                            required 
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Min. 8 chars, 1 uppercase, 1 special"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{
+                              position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
+                              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)'
+                            }}
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="submit" className="btn btn-primary" style={{ backgroundColor: 'var(--danger)', border: 'none' }}>Confirm Reset</button>
+                        <button type="button" className="btn btn-ghost" onClick={() => { setShowResetPassword(false); setNewPassword(''); }}>Cancel</button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              <h3>Inspection History ({userInspections.length})</h3>
+              <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '1rem' }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Device Serial</th>
+                      <th>Type</th>
+                      <th>Remark</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userInspections.map(insp => (
+                      <tr key={insp.id}>
+                        <td>{new Date(insp.inspected_at).toLocaleString()}</td>
+                        <td style={{ fontWeight: 500 }}>{insp.devices?.serial_number}</td>
+                        <td>{insp.devices?.device_types?.name}</td>
+                        <td>{insp.remark}</td>
+                      </tr>
+                    ))}
+                    {userInspections.length === 0 && (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
+                          No inspections performed by this user.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

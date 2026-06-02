@@ -111,4 +111,27 @@ public class SupabaseAuthService {
             throw new RuntimeException("Failed to reactivate Supabase Auth User: " + response.body());
         }
     }
+
+    public void resetAuthUserPassword(String userId, String newPassword) throws Exception {
+        String endpoint = supabaseUrl + "/auth/v1/admin/users/" + userId;
+        
+        Map<String, Object> payload = Map.of(
+                "password", newPassword
+        );
+        String jsonPayload = objectMapper.writeValueAsString(payload);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("apikey", serviceRoleKey)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("Failed to reset password in Supabase Auth: " + response.body());
+        }
+    }
 }
