@@ -93,6 +93,11 @@ export default function Layout() {
         </nav>
 
         <div className="sidebar-footer" style={{ marginTop: 'auto' }}>
+          <div style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+            <p style={{ marginBottom: '0.25rem' }}>For any query or support,</p>
+            <p style={{ marginBottom: '0.25rem' }}>kindly contact:</p>
+            <a href="mailto:firesafetypro01@gmail.com" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>firesafetypro01@gmail.com</a>
+          </div>
           <button className="nav-item" onClick={handleLogout} style={{ width: '100%', textAlign: 'left' }}>
             <LogOut size={20} />
             <span>Sign Out</span>
