@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "inspector-app",
-    "slug": "inspector-app",
+    "name": "FireSafetyPro",
+    "slug": "FireSafetyPro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,10 +16,19 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.chaitanya0817.inspectorapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "130c9281-0a9a-4f51-ac8b-b80c6ee50390"
+      }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

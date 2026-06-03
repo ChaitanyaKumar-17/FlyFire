@@ -149,6 +149,8 @@ export default function Inspections() {
     document.body.removeChild(link);
   };
 
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <div>
       <div className="page-header">
@@ -192,6 +194,7 @@ export default function Inspections() {
               className="form-control" 
               style={{ width: 'auto' }}
               value={startDate}
+              max={today}
               onChange={(e) => setStartDate(e.target.value)}
             />
             <span style={{ color: 'var(--text-secondary)' }}>to</span>
@@ -200,6 +203,7 @@ export default function Inspections() {
               className="form-control" 
               style={{ width: 'auto' }}
               value={endDate}
+              max={today}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>

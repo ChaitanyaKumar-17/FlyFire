@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, ActivityIndicator, Modal, TextInput, ScrollView, StatusBar, RefreshControl } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -23,6 +24,8 @@ export default function HistoryScreen() {
   const [showZoneFilter, setShowZoneFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [allZones, setAllZones] = useState<string[]>([]);
+  const [datePickerType, setDatePickerType] = useState<'start' | 'end' | null>(null);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -40,6 +43,7 @@ export default function HistoryScreen() {
       if (cached) {
         setUserRole(cached.userRole);
         setInspections(cached.inspections);
+        if (cached.allZones) setAllZones(cached.allZones);
         setLoading(false);
         return;
       }
@@ -77,11 +81,19 @@ export default function HistoryScreen() {
 
     const { data } = await query;
 
+    if (userData?.role === 'ROLE_SUPERADMIN') {
+      const { data: zonesData } = await supabase.from('zones').select('name');
+      if (zonesData) {
+        setAllZones(zonesData.map(z => z.name));
+      }
+    }
+
     if (data) {
       setInspections(data);
       setCachedData('history', {
         userRole: newUserRole,
-        inspections: data
+        inspections: data,
+        allZones: userData?.role === 'ROLE_SUPERADMIN' ? allZones : []
       });
     }
     setLoading(false);
@@ -118,7 +130,7 @@ export default function HistoryScreen() {
 
   const uniqueDeviceTypes = Array.from(new Set(inspections.map(i => i.devices?.device_types?.name).filter(Boolean))) as string[];
   const uniqueInspectors = Array.from(new Set(inspections.map(i => i.users?.full_name).filter(Boolean))) as string[];
-  const uniqueZones = Array.from(new Set(inspections.map(i => i.devices?.zones?.name).filter(Boolean))) as string[];
+  const uniqueZones = allZones.length > 0 ? allZones : Array.from(new Set(inspections.map(i => i.devices?.zones?.name).filter(Boolean))) as string[];
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
@@ -361,22 +373,16 @@ export default function HistoryScreen() {
             <View style={styles.dateInputContainer}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.dateLabel}>Start Date</Text>
-                <TextInput 
-                  style={styles.dateInput} 
-                  placeholder="YYYY-MM-DD" 
-                  value={startDate} 
-                  onChangeText={setStartDate} 
-                />
+                <TouchableOpacity onPress={() => setDatePickerType('start')} style={[styles.dateInput, { justifyContent: 'center' }]}>
+                  <Text style={{ color: startDate ? '#1F2937' : '#9CA3AF' }}>{startDate || 'YYYY-MM-DD'}</Text>
+                </TouchableOpacity>
               </View>
               <View style={{ width: 16 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.dateLabel}>End Date</Text>
-                <TextInput 
-                  style={styles.dateInput} 
-                  placeholder="YYYY-MM-DD" 
-                  value={endDate} 
-                  onChangeText={setEndDate} 
-                />
+                <TouchableOpacity onPress={() => setDatePickerType('end')} style={[styles.dateInput, { justifyContent: 'center' }]}>
+                  <Text style={{ color: endDate ? '#1F2937' : '#9CA3AF' }}>{endDate || 'YYYY-MM-DD'}</Text>
+                </TouchableOpacity>
               </View>
             </View>
             <View style={styles.presetDates}>
@@ -407,7 +413,56 @@ export default function HistoryScreen() {
         </View>
       </Modal>
 
-      </SafeAreaView>
+        <Modal visible={Platform.OS === 'ios' && datePickerType !== null} transparent animationType="slide">
+        <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
+          <View style={[styles.modalContent, { padding: 0, paddingBottom: 20 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: '#f3f4f6', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+              <TouchableOpacity onPress={() => {
+                if (datePickerType === 'start') setStartDate('');
+                else setEndDate('');
+                setDatePickerType(null);
+              }}>
+                <Text style={{ color: '#EF4444', fontSize: 16 }}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setDatePickerType(null)}>
+                <Text style={{ color: '#2563EB', fontWeight: 'bold', fontSize: 16 }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            {datePickerType && (
+              <DateTimePicker
+                value={datePickerType === 'start' ? (startDate ? new Date(startDate) : new Date()) : (endDate ? new Date(endDate) : new Date())}
+                mode="date"
+                display="spinner"
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) {
+                    const d = selectedDate.toISOString().split('T')[0];
+                    if (datePickerType === 'start') setStartDate(d);
+                    else setEndDate(d);
+                  }
+                }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {Platform.OS === 'android' && datePickerType && (
+        <DateTimePicker
+          value={datePickerType === 'start' ? (startDate ? new Date(startDate) : new Date()) : (endDate ? new Date(endDate) : new Date())}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            const currentType = datePickerType;
+            setDatePickerType(null); // immediately close on android
+            if (event.type === 'set' && selectedDate) {
+              const d = selectedDate.toISOString().split('T')[0];
+              if (currentType === 'start') setStartDate(d);
+              else setEndDate(d);
+            }
+          }}
+        />
+      )}
+    </SafeAreaView>
     </View>
   );
 }
