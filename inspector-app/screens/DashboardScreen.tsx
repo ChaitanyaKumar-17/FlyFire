@@ -403,7 +403,7 @@ export default function DashboardScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: '80%' }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={styles.modalTitle}>Devices in Your Zone</Text>
+              <Text style={styles.modalTitle}>{userRole === 'ROLE_SUPERADMIN' ? 'All Registered Devices' : 'Devices in Your Zone'}</Text>
               <TouchableOpacity onPress={() => setShowDevicesModal(false)}>
                 <Text style={{fontSize: 20, color: '#6B7280'}}>✕</Text>
               </TouchableOpacity>
@@ -413,7 +413,10 @@ export default function DashboardScreen() {
                 <View key={device.id} style={styles.deviceListItem}>
                   <View style={styles.deviceListInfo}>
                     <Text style={styles.deviceListSerial}>{device.serial_number}</Text>
-                    <Text style={styles.deviceListType}>{device.device_types?.name}</Text>
+                    <Text style={styles.deviceListType}>
+                      {device.device_types?.name}
+                      {userRole === 'ROLE_SUPERADMIN' && device.zones?.name ? ` • Zone: ${device.zones.name}` : ''}
+                    </Text>
                   </View>
                   <View style={[styles.deviceListStatus, !device.is_active && styles.deviceListStatusInactive]}>
                     <View style={[styles.deviceListStatusDot, !device.is_active && styles.deviceListStatusDotInactive]} />
