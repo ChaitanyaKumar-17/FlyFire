@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { History, Search, Trash2 } from 'lucide-react';
+import { History, Search, Trash2, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getCachedData, setCachedData, clearCache } from '../lib/cache';
 
@@ -116,6 +116,39 @@ export default function Inspections() {
     return matchesSearch && matchesZone && matchesDate;
   });
 
+  const handleExportCSV = () => {
+    if (filteredInspections.length === 0) {
+      toast.error('No records to export');
+      return;
+    }
+    const headers = ['Device Serial', 'Type', 'Zone', 'Inspector', 'Date', 'Time', 'Remark'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredInspections.map(insp => {
+        const date = new Date(insp.inspected_at);
+        return [
+          `"${insp.devices?.serial_number || ''}"`,
+          `"${insp.devices?.device_types?.name || ''}"`,
+          `"${insp.devices?.zones?.name || 'Unassigned'}"`,
+          `"${insp.users?.full_name || ''}"`,
+          `="${date.toLocaleDateString()}"`,
+          `="${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}"`,
+          `"${(insp.remark || '').replace(/"/g, '""')}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inspection_history_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -123,6 +156,10 @@ export default function Inspections() {
           <h1 className="page-title">Inspection Audit Logs</h1>
           <p className="page-description">Complete history of all device safety checks</p>
         </div>
+        <button className="btn btn-primary" onClick={handleExportCSV}>
+          <Download size={20} />
+          Export to Excel (CSV)
+        </button>
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>

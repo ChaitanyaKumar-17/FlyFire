@@ -199,4 +199,43 @@ public class AdminUserController {
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to reset password: " + e.getMessage()));
         }
     }
+
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<?> updateUserProfile(@PathVariable UUID id, @RequestBody Map<String, String> payload, @AuthenticationPrincipal Jwt jwt) {
+        String requesterIdStr = jwt.getClaimAsString("sub");
+        if (requesterIdStr == null) return ResponseEntity.status(401).build();
+
+        String fullName = payload.get("fullName");
+        if (fullName == null || fullName.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Full name is required."));
+        }
+
+        User requester = userRepository.findById(UUID.fromString(requesterIdStr)).orElse(null);
+        User targetUser = userRepository.findById(id).orElse(null);
+
+        if (requester == null || targetUser == null) return ResponseEntity.notFound().build();
+
+        // Permission check
+        if (requester.getRole() == UserRole.ROLE_ADMIN) {
+            if (targetUser.getRole() == UserRole.ROLE_SUPERADMIN || targetUser.getRole() == UserRole.ROLE_ADMIN) {
+                return ResponseEntity.status(403).body(Map.of("error", "Admins can only edit normal users."));
+            }
+            if (!requester.getZone().getId().equals(targetUser.getZone().getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Cannot edit users outside your zone."));
+            }
+        } else if (requester.getRole() != UserRole.ROLE_SUPERADMIN) {
+            return ResponseEntity.status(403).body(Map.of("error", "Insufficient permissions."));
+        }
+
+        try {
+            targetUser.setFullName(fullName);
+            userRepository.save(targetUser);
+
+            // Supabase auth service would typically require updating user meta_data if we cared, but we fetch from users table.
+            
+            return ResponseEntity.ok(Map.of("message", "Profile updated successfully.", "fullName", fullName));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to update profile: " + e.getMessage()));
+        }
+    }
 }

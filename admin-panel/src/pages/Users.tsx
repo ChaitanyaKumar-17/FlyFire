@@ -41,6 +41,9 @@ export default function Users() {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [editingName, setEditingName] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+
   const filteredUsers = users.filter(u => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = (u.fullName || '').toLowerCase().includes(searchLower) || 
@@ -226,6 +229,35 @@ export default function Users() {
       toast.success('Password reset successfully!');
       setNewPassword('');
       setShowResetPassword(false);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`http://localhost:8080/api/admin/users/${selectedUser.id}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ fullName: editFullName })
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to update profile`);
+      }
+      toast.success('Profile updated successfully!');
+      
+      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, fullName: editFullName } : u));
+      setSelectedUser({ ...selectedUser, fullName: editFullName });
+      
+      clearCache('users');
+      setEditingName(false);
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -509,6 +541,41 @@ export default function Users() {
                 <div><strong>Email:</strong> {selectedUser.email}</div>
                 <div><strong>Username:</strong> @{selectedUser.username}</div>
               </div>
+
+              {selectedUser.id !== currentUserId && (
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ margin: 0 }}>Profile Management</h3>
+                    {!editingName && (
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ backgroundColor: 'var(--primary)', color: 'white', border: 'none' }}
+                        onClick={() => { setEditFullName(selectedUser.fullName); setEditingName(true); }}
+                      >
+                        Edit Name
+                      </button>
+                    )}
+                  </div>
+                  {editingName && (
+                    <form onSubmit={handleUpdateProfile} style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>
+                      <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">Full Name</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          required 
+                          value={editFullName}
+                          onChange={(e) => setEditFullName(e.target.value)}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <button type="button" className="btn btn-ghost" onClick={() => setEditingName(false)}>Cancel</button>
+                        <button type="submit" className="btn btn-primary">Save Profile</button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
 
               {selectedUser.id !== currentUserId && (
                 <div style={{ marginBottom: '2rem' }}>
