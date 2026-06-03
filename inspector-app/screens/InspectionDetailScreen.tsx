@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { supabase } from '../lib/supabase';
 import { clearCache } from '../lib/cache';
-import { ArrowLeft, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, ClipboardList } from 'lucide-react-native';
 
 type InspectionDetailRouteProp = RouteProp<RootStackParamList, 'InspectionDetail'>;
 
@@ -27,12 +28,18 @@ export default function InspectionDetailScreen() {
 
   const fetchDeviceDetails = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('Not authenticated');
+
+      const { data: userData } = await supabase.from('users').select('role, zone_id').eq('id', session.user.id).single();
+
       const { data, error } = await supabase
         .from('devices')
         .select(`
           id,
           serial_number,
           is_active,
+          zone_id,
           device_types!devices_device_type_id_fkey(name),
           zones!devices_zone_id_fkey(name)
         `)
@@ -40,6 +47,19 @@ export default function InspectionDetailScreen() {
         .single();
 
       if (error) throw error;
+      
+      // Authorization Check
+      if (userData?.role !== 'ROLE_SUPERADMIN') {
+        if (userData?.zone_id !== data.zone_id) {
+          Alert.alert(
+            'Unauthorized Zone', 
+            'This device belongs to a different zone. You are not authorized to inspect it.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+      }
+
       setDevice(data);
 
       if (data.is_active) {
@@ -114,14 +134,24 @@ export default function InspectionDetailScreen() {
   if (!device) return null;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar backgroundColor="#1E3A8A" barStyle="light-content" />
+      <SafeAreaView style={{ flex: 0, backgroundColor: '#1E3A8A' }} edges={['top']} />
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <ArrowLeft size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Inspection Detail</Text>
-          <View style={{ width: 40 }} />
+          <View style={styles.headerContent}>
+            <View style={styles.headerIconWrapper}>
+              <ClipboardList size={26} color="#1E3A8A" />
+            </View>
+            <View>
+              <Text style={styles.headerTitle}>Inspection Detail</Text>
+              <Text style={styles.headerSubtitle}>Submit inspection report</Text>
+            </View>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -208,16 +238,21 @@ export default function InspectionDetailScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
-  container: {
+  keyboardView: {
     flex: 1,
   },
   loadingContainer: {
@@ -233,21 +268,38 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     backgroundColor: '#1E3A8A',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   backButton: {
     padding: 8,
+    marginRight: 4,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#93C5FD',
   },
   content: {
     padding: 16,

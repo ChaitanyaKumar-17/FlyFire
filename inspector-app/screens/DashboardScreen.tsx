@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { LogOut, QrCode, Eye, EyeOff, ChevronRight, ShieldCheck } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -14,11 +15,11 @@ export default function DashboardScreen() {
   const [activeDevices, setActiveDevices] = useState<any[]>([]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
+  const [userId, setUserId] = useState<string | null>(null);
   const [isFirstLoginPrompt, setIsFirstLoginPrompt] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showOldPassword, setShowOldPassword] = useState(false);
@@ -26,6 +27,7 @@ export default function DashboardScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showDevicesModal, setShowDevicesModal] = useState(false);
+  const [userRole, setUserRole] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -35,6 +37,7 @@ export default function DashboardScreen() {
           if (cached) {
             setUserName(cached.userName);
             setUserId(cached.userId);
+            setUserRole(cached.userRole);
             setActiveDevices(cached.activeDevices);
             setRecentInspections(cached.recentInspections);
             return;
@@ -54,10 +57,14 @@ export default function DashboardScreen() {
           let newActiveDevices: any[] = [];
           let newRecentInspections: any[] = [];
 
+          let newUserRole = '';
+
           if (data) {
             newUserName = data.full_name;
+            newUserRole = data.role;
             setUserName(newUserName);
             setUserId(newUserId);
+            setUserRole(newUserRole);
             
             if (data.is_first_login && data.role !== 'ROLE_SUPERADMIN') {
               setIsFirstLoginPrompt(true);
@@ -65,7 +72,16 @@ export default function DashboardScreen() {
             }
           }
           
-          if (data?.zone_id) {
+          if (data?.role === 'ROLE_SUPERADMIN') {
+            const { data: devices } = await supabase
+              .from('devices')
+              .select('id, serial_number, is_active, device_types(name), zones(name)')
+              .order('registered_at', { ascending: false });
+            if (devices) {
+              newActiveDevices = devices;
+              setActiveDevices(devices);
+            }
+          } else if (data?.zone_id) {
             const { data: devices } = await supabase
               .from('devices')
               .select('id, serial_number, is_active, device_types(name), zones(name)')
@@ -100,6 +116,7 @@ export default function DashboardScreen() {
           setCachedData('dashboard', {
             userName: newUserName,
             userId: newUserId,
+            userRole: newUserRole,
             activeDevices: newActiveDevices,
             recentInspections: newRecentInspections
           });
@@ -303,7 +320,7 @@ export default function DashboardScreen() {
               <View style={{ marginLeft: 16, flex: 1 }}>
                 <Text style={styles.activeDevicesTitle}>Devices</Text>
                 <Text style={styles.activeDevicesSubtitle}>
-                  {activeDevices.filter(d => d.is_active).length} active devices in your zone
+                  {activeDevices.filter(d => d.is_active).length} active {userRole === 'ROLE_SUPERADMIN' ? 'devices total' : 'devices in your zone'}
                 </Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
@@ -486,7 +503,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F3F4F6',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
@@ -528,7 +544,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   userName: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111827',
   },
