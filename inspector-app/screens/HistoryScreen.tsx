@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, ActivityIndicator, Modal, TextInput, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, ActivityIndicator, Modal, TextInput, ScrollView, StatusBar, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -22,6 +22,13 @@ export default function HistoryScreen() {
   const [showInspectorFilter, setShowInspectorFilter] = useState(false);
   const [showZoneFilter, setShowZoneFilter] = useState(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchHistory(true);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     fetchHistory();
@@ -254,6 +261,7 @@ export default function HistoryScreen() {
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} tintColor="#2563EB" />}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               {userRole === 'ROLE_USER' ? "You haven't performed any inspections yet." : "No inspection records found."}

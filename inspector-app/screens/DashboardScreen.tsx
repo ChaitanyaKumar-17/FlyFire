@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { LogOut, QrCode, Eye, EyeOff, ChevronRight, ShieldCheck } from 'lucide-react-native';
@@ -29,102 +29,111 @@ export default function DashboardScreen() {
   const [showDevicesModal, setShowDevicesModal] = useState(false);
   const [userRole, setUserRole] = useState('');
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchUser = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('dashboard');
+      if (cached) {
+        setUserName(cached.userName);
+        setUserId(cached.userId);
+        setUserRole(cached.userRole);
+        setActiveDevices(cached.activeDevices);
+        setRecentInspections(cached.recentInspections);
+        return;
+      }
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data } = await supabase
+        .from('users')
+        .select('full_name, role, zone_id, is_first_login')
+        .eq('id', session.user.id)
+        .single();
+
+      let newUserName = '';
+      let newUserId = session.user.id;
+      let newActiveDevices: any[] = [];
+      let newRecentInspections: any[] = [];
+
+      let newUserRole = '';
+
+      if (data) {
+        newUserName = data.full_name;
+        newUserRole = data.role;
+        setUserName(newUserName);
+        setUserId(newUserId);
+        setUserRole(newUserRole);
+        
+        if (data.is_first_login && data.role !== 'ROLE_SUPERADMIN') {
+          setIsFirstLoginPrompt(true);
+          return;
+        }
+      }
+      
+      if (data?.role === 'ROLE_SUPERADMIN') {
+        const { data: devices } = await supabase
+          .from('devices')
+          .select('id, serial_number, is_active, device_types(name), zones(name)')
+          .order('registered_at', { ascending: false });
+        if (devices) {
+          newActiveDevices = devices;
+          setActiveDevices(devices);
+        }
+      } else if (data?.zone_id) {
+        const { data: devices } = await supabase
+          .from('devices')
+          .select('id, serial_number, is_active, device_types(name), zones(name)')
+          .eq('zone_id', data.zone_id)
+          .order('registered_at', { ascending: false });
+        if (devices) {
+          newActiveDevices = devices;
+          setActiveDevices(devices);
+        }
+      }
+      
+      let query = supabase
+        .from('inspections')
+        .select('id, remark, inspected_at, devices!inner(serial_number, zone_id)')
+        .order('inspected_at', { ascending: false })
+        .limit(5);
+
+      if (data?.role === 'ROLE_SUPERADMIN') {
+        // no filter
+      } else if (data?.role === 'ROLE_ADMIN' && data?.zone_id) {
+        query = query.eq('devices.zone_id', data.zone_id);
+      } else {
+        query = query.eq('inspector_id', session.user.id);
+      }
+
+      const { data: inspections } = await query;
+      if (inspections) {
+        newRecentInspections = inspections;
+        setRecentInspections(inspections);
+      }
+      
+      setCachedData('dashboard', {
+        userName: newUserName,
+        userId: newUserId,
+        userRole: newUserRole,
+        activeDevices: newActiveDevices,
+        recentInspections: newRecentInspections
+      });
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      const fetchUser = async (forceRefresh = false) => {
-        if (!forceRefresh) {
-          const cached = getCachedData<any>('dashboard');
-          if (cached) {
-            setUserName(cached.userName);
-            setUserId(cached.userId);
-            setUserRole(cached.userRole);
-            setActiveDevices(cached.activeDevices);
-            setRecentInspections(cached.recentInspections);
-            return;
-          }
-        }
+      fetchUser();
+    }, [fetchUser])
+  );
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data } = await supabase
-            .from('users')
-            .select('full_name, role, zone_id, is_first_login')
-            .eq('id', session.user.id)
-            .single();
-
-          let newUserName = '';
-          let newUserId = session.user.id;
-          let newActiveDevices: any[] = [];
-          let newRecentInspections: any[] = [];
-
-          let newUserRole = '';
-
-          if (data) {
-            newUserName = data.full_name;
-            newUserRole = data.role;
-            setUserName(newUserName);
-            setUserId(newUserId);
-            setUserRole(newUserRole);
-            
-            if (data.is_first_login && data.role !== 'ROLE_SUPERADMIN') {
-              setIsFirstLoginPrompt(true);
-              return;
-            }
-          }
-          
-          if (data?.role === 'ROLE_SUPERADMIN') {
-            const { data: devices } = await supabase
-              .from('devices')
-              .select('id, serial_number, is_active, device_types(name), zones(name)')
-              .order('registered_at', { ascending: false });
-            if (devices) {
-              newActiveDevices = devices;
-              setActiveDevices(devices);
-            }
-          } else if (data?.zone_id) {
-            const { data: devices } = await supabase
-              .from('devices')
-              .select('id, serial_number, is_active, device_types(name), zones(name)')
-              .eq('zone_id', data.zone_id)
-              .order('registered_at', { ascending: false });
-            if (devices) {
-              newActiveDevices = devices;
-              setActiveDevices(devices);
-            }
-          }
-          
-          let query = supabase
-            .from('inspections')
-            .select('id, remark, inspected_at, devices!inner(serial_number, zone_id)')
-            .order('inspected_at', { ascending: false })
-            .limit(5);
-
-          if (data?.role === 'ROLE_SUPERADMIN') {
-            // no filter
-          } else if (data?.role === 'ROLE_ADMIN' && data?.zone_id) {
-            query = query.eq('devices.zone_id', data.zone_id);
-          } else {
-            query = query.eq('inspector_id', session.user.id);
-          }
-
-          const { data: inspections } = await query;
-          if (inspections) {
-            newRecentInspections = inspections;
-            setRecentInspections(inspections);
-          }
-          
-          setCachedData('dashboard', {
-            userName: newUserName,
-            userId: newUserId,
-            userRole: newUserRole,
-            activeDevices: newActiveDevices,
-            recentInspections: newRecentInspections
-          });
-        }
-    };
-    fetchUser();
-  }, [])
-);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchUser(true);
+    setRefreshing(false);
+  }, [fetchUser]);
 
   const handleLogout = () => {
     setShowLogoutModal(true);
@@ -336,7 +345,12 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
           
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <ScrollView 
+            style={{ flex: 1 }} 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={{ paddingBottom: 24 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} tintColor="#2563EB" />}
+          >
             {recentInspections.length > 0 ? (
               recentInspections.map((insp) => (
                 <View key={insp.id} style={styles.inspectionItem}>
