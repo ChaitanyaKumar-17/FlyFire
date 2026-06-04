@@ -18,6 +18,8 @@ export default function HistoryScreen() {
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [tempStartDate, setTempStartDate] = useState('');
+  const [tempEndDate, setTempEndDate] = useState('');
   
   const [showDeviceFilter, setShowDeviceFilter] = useState(false);
   const [showInspectorFilter, setShowInspectorFilter] = useState(false);
@@ -216,7 +218,11 @@ export default function HistoryScreen() {
 
           <TouchableOpacity 
             style={[styles.filterChip, (startDate || endDate) ? styles.filterChipActive : null]} 
-            onPress={() => setShowDateFilter(true)}
+            onPress={() => {
+              setTempStartDate(startDate);
+              setTempEndDate(endDate);
+              setShowDateFilter(true);
+            }}
           >
             <Calendar size={14} color={(startDate || endDate) ? "#FFFFFF" : "#6B7280"} />
             <Text style={[styles.filterChipText, (startDate || endDate) ? styles.filterChipTextActive : null]}>
@@ -380,29 +386,29 @@ export default function HistoryScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.dateLabel}>Start Date</Text>
                 <TouchableOpacity onPress={() => setDatePickerType('start')} style={[styles.dateInput, { justifyContent: 'center' }]}>
-                  <Text style={{ color: startDate ? '#1F2937' : '#9CA3AF' }}>{startDate || 'YYYY-MM-DD'}</Text>
+                  <Text style={{ color: tempStartDate ? '#1F2937' : '#9CA3AF' }}>{tempStartDate || 'YYYY-MM-DD'}</Text>
                 </TouchableOpacity>
               </View>
               <View style={{ width: 16 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.dateLabel}>End Date</Text>
                 <TouchableOpacity onPress={() => setDatePickerType('end')} style={[styles.dateInput, { justifyContent: 'center' }]}>
-                  <Text style={{ color: endDate ? '#1F2937' : '#9CA3AF' }}>{endDate || 'YYYY-MM-DD'}</Text>
+                  <Text style={{ color: tempEndDate ? '#1F2937' : '#9CA3AF' }}>{tempEndDate || 'YYYY-MM-DD'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
             <View style={styles.presetDates}>
               <TouchableOpacity style={styles.presetButton} onPress={() => {
                 const d = new Date(); d.setDate(d.getDate() - 7);
-                setStartDate(d.toISOString().split('T')[0]);
-                setEndDate(new Date().toISOString().split('T')[0]);
+                setTempStartDate(d.toISOString().split('T')[0]);
+                setTempEndDate(new Date().toISOString().split('T')[0]);
               }}>
                 <Text style={styles.presetText}>Last 7 Days</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.presetButton} onPress={() => {
                 const d = new Date(); d.setDate(d.getDate() - 30);
-                setStartDate(d.toISOString().split('T')[0]);
-                setEndDate(new Date().toISOString().split('T')[0]);
+                setTempStartDate(d.toISOString().split('T')[0]);
+                setTempEndDate(new Date().toISOString().split('T')[0]);
               }}>
                 <Text style={styles.presetText}>Last 30 Days</Text>
               </TouchableOpacity>
@@ -411,7 +417,11 @@ export default function HistoryScreen() {
               <TouchableOpacity style={[styles.modalCloseButton, { flex: 1, backgroundColor: '#F3F4F6', marginTop: 0 }]} onPress={() => setShowDateFilter(false)}>
                 <Text style={[styles.modalCloseText, { color: '#4B5563' }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalCloseButton, { flex: 1, backgroundColor: '#1E3A8A', marginTop: 0 }]} onPress={() => setShowDateFilter(false)}>
+              <TouchableOpacity style={[styles.modalCloseButton, { flex: 1, backgroundColor: '#1E3A8A', marginTop: 0 }]} onPress={() => {
+                setStartDate(tempStartDate);
+                setEndDate(tempEndDate);
+                setShowDateFilter(false);
+              }}>
                 <Text style={[styles.modalCloseText, { color: '#FFFFFF' }]}>Apply</Text>
               </TouchableOpacity>
             </View>
@@ -424,8 +434,8 @@ export default function HistoryScreen() {
           <View style={[styles.modalContent, { padding: 0, paddingBottom: 20 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: '#f3f4f6', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
               <TouchableOpacity onPress={() => {
-                if (datePickerType === 'start') setStartDate('');
-                else setEndDate('');
+                if (datePickerType === 'start') setTempStartDate('');
+                else setTempEndDate('');
                 setDatePickerType(null);
               }}>
                 <Text style={{ color: '#EF4444', fontSize: 16 }}>Clear</Text>
@@ -436,14 +446,16 @@ export default function HistoryScreen() {
             </View>
             {datePickerType && (
               <DateTimePicker
-                value={datePickerType === 'start' ? (startDate ? new Date(startDate) : new Date()) : (endDate ? new Date(endDate) : new Date())}
+                value={datePickerType === 'start' ? (tempStartDate ? new Date(tempStartDate) : new Date()) : (tempEndDate ? new Date(tempEndDate) : new Date())}
                 mode="date"
                 display="spinner"
+                maximumDate={datePickerType === 'start' ? (tempEndDate ? new Date(tempEndDate) : new Date()) : new Date()}
+                minimumDate={datePickerType === 'end' && tempStartDate ? new Date(tempStartDate) : undefined}
                 onChange={(event, selectedDate) => {
                   if (selectedDate) {
                     const d = selectedDate.toISOString().split('T')[0];
-                    if (datePickerType === 'start') setStartDate(d);
-                    else setEndDate(d);
+                    if (datePickerType === 'start') setTempStartDate(d);
+                    else setTempEndDate(d);
                   }
                 }}
               />
@@ -454,16 +466,18 @@ export default function HistoryScreen() {
 
       {Platform.OS === 'android' && datePickerType && (
         <DateTimePicker
-          value={datePickerType === 'start' ? (startDate ? new Date(startDate) : new Date()) : (endDate ? new Date(endDate) : new Date())}
+          value={datePickerType === 'start' ? (tempStartDate ? new Date(tempStartDate) : new Date()) : (tempEndDate ? new Date(tempEndDate) : new Date())}
           mode="date"
           display="default"
+          maximumDate={datePickerType === 'start' ? (tempEndDate ? new Date(tempEndDate) : new Date()) : new Date()}
+          minimumDate={datePickerType === 'end' && tempStartDate ? new Date(tempStartDate) : undefined}
           onChange={(event, selectedDate) => {
             const currentType = datePickerType;
             setDatePickerType(null); // immediately close on android
             if (event.type === 'set' && selectedDate) {
               const d = selectedDate.toISOString().split('T')[0];
-              if (currentType === 'start') setStartDate(d);
-              else setEndDate(d);
+              if (currentType === 'start') setTempStartDate(d);
+              else setTempEndDate(d);
             }
           }}
         />
