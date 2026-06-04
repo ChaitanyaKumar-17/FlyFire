@@ -50,6 +50,20 @@ export default function InspectionDetailScreen() {
 
       if (error) throw error;
       
+      if (!data.is_active) {
+        if (Platform.OS === 'web') {
+          window.alert('Decommissioned Equipment: This equipment has been decommissioned and cannot be inspected.');
+          navigation.goBack();
+        } else {
+          Alert.alert(
+            'Decommissioned Equipment',
+            'This equipment has been decommissioned and cannot be inspected.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        }
+        return;
+      }
+      
       // Authorization Check
       if (userData?.role !== 'ROLE_SUPERADMIN') {
         if (userData?.zone_id !== data.zone_id) {
@@ -81,8 +95,21 @@ export default function InspectionDetailScreen() {
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to fetch equipment details. ' + error.message);
-      navigation.goBack();
+      const isInvalidQR = error.code === 'PGRST116' || error.code === '22P02';
+      const errorMsg = isInvalidQR 
+        ? 'Invalid QR Code: The scanned QR code does not match any valid equipment in the database.'
+        : 'Error: Failed to fetch equipment details. ' + error.message;
+
+      if (Platform.OS === 'web') {
+        window.alert(errorMsg);
+        navigation.goBack();
+      } else {
+        Alert.alert(
+          isInvalidQR ? 'Invalid QR Code' : 'Error',
+          isInvalidQR ? 'The scanned QR code does not match any valid equipment in the database.' : 'Failed to fetch equipment details. ' + error.message,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } finally {
       setLoading(false);
     }
