@@ -12,6 +12,7 @@ interface Device {
   registeredAt: string;
   isActive: boolean;
   qrSignedUrl?: string;
+  description?: string;
 }
 
 // Mock data removed in favor of live DB
@@ -119,7 +120,8 @@ export default function Devices() {
           zone: d.zones?.name || 'Unknown',
           registeredAt: new Date(d.registered_at).toLocaleDateString(),
           isActive: d.is_active,
-          qrSignedUrl: d.qr_signed_url
+          qrSignedUrl: d.qr_signed_url,
+          description: d.description
         }));
         setDevices(mappedDevices);
         
@@ -307,6 +309,7 @@ export default function Devices() {
                 <th>Serial Number</th>
                 <th>Device Type</th>
                 <th>Zone</th>
+                <th>Remark</th>
                 <th>Registration Date</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -326,6 +329,15 @@ export default function Devices() {
                   <td style={{ fontWeight: 500 }}>{device.serialNumber}</td>
                   <td>{device.deviceType}</td>
                   <td>{device.zone}</td>
+                  <td>
+                    {device.description ? (
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }} title={device.description}>
+                        {device.description.length > 25 ? device.description.substring(0, 25) + '...' : device.description}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-secondary)' }}>-</span>
+                    )}
+                  </td>
                   <td>{device.registeredAt}</td>
                   <td>
                     {device.isActive ? (
@@ -434,7 +446,7 @@ export default function Devices() {
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label">Description (Optional)</label>
+                <label className="form-label">Remark (Optional)</label>
                 <textarea 
                   className="form-control" 
                   rows={3}
@@ -538,6 +550,13 @@ export default function Devices() {
               </div>
               <h3 style={{ margin: '0 0 0.5rem 0' }}>{selectedQrDevice.serialNumber}</h3>
               <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{selectedQrDevice.deviceType} • {selectedQrDevice.zone}</p>
+              
+              {selectedQrDevice.description && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: '6px', borderLeft: '3px solid var(--primary)', textAlign: 'left' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Remark</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', margin: 0 }}>{selectedQrDevice.description}</p>
+                </div>
+              )}
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'center' }}>
               <button 

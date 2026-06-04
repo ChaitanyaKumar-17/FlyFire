@@ -75,7 +75,7 @@ export default function DashboardScreen() {
       if (data?.role === 'ROLE_SUPERADMIN') {
         const { data: devices } = await supabase
           .from('devices')
-          .select('id, serial_number, is_active, device_types(name), zones(name)')
+          .select('id, serial_number, is_active, description, device_types(name), zones(name)')
           .order('registered_at', { ascending: false });
         if (devices) {
           newActiveDevices = devices;
@@ -84,7 +84,7 @@ export default function DashboardScreen() {
       } else if (data?.zone_id) {
         const { data: devices } = await supabase
           .from('devices')
-          .select('id, serial_number, is_active, device_types(name), zones(name)')
+          .select('id, serial_number, is_active, description, device_types(name), zones(name)')
           .eq('zone_id', data.zone_id)
           .order('registered_at', { ascending: false });
         if (devices) {
@@ -95,7 +95,7 @@ export default function DashboardScreen() {
       
       let query = supabase
         .from('inspections')
-        .select('id, remark, inspected_at, devices!inner(serial_number, zone_id)')
+        .select('id, remark, inspected_at, devices!inner(serial_number, zone_id, description)')
         .order('inspected_at', { ascending: false })
         .limit(5);
 
@@ -361,6 +361,11 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                   <Text style={styles.inspectionRemark} numberOfLines={2}>{insp.remark}</Text>
+                  {insp.devices?.description ? (
+                    <Text style={[styles.inspectionRemark, { color: '#9CA3AF', marginTop: 4 }]} numberOfLines={1}>
+                      Remark: {insp.devices.description}
+                    </Text>
+                  ) : null}
                 </View>
               ))
             ) : (
@@ -431,6 +436,11 @@ export default function DashboardScreen() {
                       {device.device_types?.name}
                       {userRole === 'ROLE_SUPERADMIN' && device.zones?.name ? ` • Zone: ${device.zones.name}` : ''}
                     </Text>
+                    {device.description ? (
+                      <Text style={[styles.deviceListType, { color: '#9CA3AF', marginTop: 2 }]} numberOfLines={1}>
+                        Remark: {device.description}
+                      </Text>
+                    ) : null}
                   </View>
                   <View style={[styles.deviceListStatus, !device.is_active && styles.deviceListStatusInactive]}>
                     <View style={[styles.deviceListStatusDot, !device.is_active && styles.deviceListStatusDotInactive]} />

@@ -66,7 +66,7 @@ export default function HistoryScreen() {
         id,
         remark,
         inspected_at,
-        devices!inner(serial_number, zone_id, device_types(name), zones(name)),
+        devices!inner(serial_number, zone_id, description, device_types(name), zones(name)),
         users(full_name)
       `)
       .order('inspected_at', { ascending: false });
@@ -167,6 +167,12 @@ export default function HistoryScreen() {
       <View style={styles.remarkContainer}>
         <Text style={styles.remarkLabel}>Inspector Findings</Text>
         <Text style={styles.remark}>{item.remark}</Text>
+        {item.devices?.description ? (
+          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
+            <Text style={styles.remarkLabel}>Device Remark</Text>
+            <Text style={[styles.remark, { color: '#6B7280' }]}>{item.devices.description}</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );

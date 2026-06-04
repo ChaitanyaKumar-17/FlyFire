@@ -19,6 +19,7 @@ export default function InspectionDetailScreen() {
   const [lastInspection, setLastInspection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [remark, setRemark] = useState('');
+  const [deviceRemark, setDeviceRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -40,6 +41,7 @@ export default function InspectionDetailScreen() {
           serial_number,
           is_active,
           zone_id,
+          description,
           device_types!devices_device_type_id_fkey(name),
           zones!devices_zone_id_fkey(name)
         `)
@@ -61,6 +63,9 @@ export default function InspectionDetailScreen() {
       }
 
       setDevice(data);
+      if (data.description) {
+        setDeviceRemark(data.description);
+      }
 
       if (data.is_active) {
         const { data: inspectionData } = await supabase
@@ -108,6 +113,15 @@ export default function InspectionDetailScreen() {
       });
 
       if (error) throw error;
+
+      if (deviceRemark.trim() !== (device.description || '')) {
+        const { error: deviceError } = await supabase
+          .from('devices')
+          .update({ description: deviceRemark.trim() })
+          .eq('id', device.id);
+          
+        if (deviceError) console.error("Failed to update device remark", deviceError);
+      }
 
       clearCache();
 
@@ -202,6 +216,20 @@ export default function InspectionDetailScreen() {
 
           <View style={styles.formContainer}>
             <Text style={styles.sectionTitle}>Log New Inspection</Text>
+            
+            <Text style={styles.label}>Device Remark</Text>
+            <TextInput
+              style={[styles.textArea, { height: 80, marginBottom: 16 }]}
+              placeholder="Add or update device specific remark..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={3}
+              value={deviceRemark}
+              onChangeText={setDeviceRemark}
+              editable={!submitting && device.is_active}
+              textAlignVertical="top"
+            />
+
             <Text style={styles.label}>Inspection Remark</Text>
             <TextInput
               style={styles.textArea}
