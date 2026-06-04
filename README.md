@@ -103,5 +103,3 @@ Ensure you have the following installed on your machine before setting up the pr
   - `Inspector`: Mobile app access for scanning and reporting equipment status.
 - **Account Management**: Admins can register, disable, and reinstate staff dynamically.
 
-## 🤝 Contribution
-When contributing to this repository, please ensure that any UI text correctly uses the term **"Equipment"** rather than "Device" to maintain nomenclature consistency across the platform.
