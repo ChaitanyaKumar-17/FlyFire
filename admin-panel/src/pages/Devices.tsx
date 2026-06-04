@@ -27,6 +27,7 @@ export default function Devices() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
+  const [deviceToPermanentDelete, setDeviceToPermanentDelete] = useState<string | null>(null);
   const [auditDevice, setAuditDevice] = useState<Device | null>(null);
   const [audits, setAudits] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,19 +218,26 @@ export default function Devices() {
     setDeviceToDelete(id);
   };
 
-  const handlePermanentDelete = async (id: string) => {
-    // Kept as-is, can be hooked to custom modal later if needed, but not triggered in UI normally.
+  const handlePermanentDelete = (id: string) => {
+    setDeviceToPermanentDelete(id);
+  };
+
+  const confirmPermanentDelete = async () => {
+    if (!deviceToPermanentDelete) return;
     try {
       const { error } = await supabase
         .from('devices')
         .delete()
-        .eq('id', id);
+        .eq('id', deviceToPermanentDelete);
         
       if (error) throw error;
       toast.success('Device permanently deleted!');
-      fetchDevices();
+      setDeviceToPermanentDelete(null);
+      clearCache('devices');
+      clearCache('dashboard');
+      fetchDevices(true);
     } catch (error: any) {
-      alert('Error permanently deleting device: ' + error.message);
+      toast.error('Error permanently deleting device: ' + error.message);
     }
   };
 
@@ -316,20 +324,21 @@ export default function Devices() {
               </tr>
             </thead>
             <tbody>
-              {filteredDevices.map((device) => (
+              {filteredDevices.map((device) => {
+                const fadeStyle = device.isActive ? {} : { opacity: 0.5 };
+                return (
                 <tr 
                   key={device.id} 
                   style={{ 
-                    opacity: device.isActive ? 1 : 0.6,
                     cursor: device.isActive && device.qrSignedUrl ? 'pointer' : 'default'
                   }}
                   className={device.isActive && device.qrSignedUrl ? 'table-row-hover' : ''}
                   onClick={() => handleDeviceRowClick(device)}
                 >
-                  <td style={{ fontWeight: 500 }}>{device.serialNumber}</td>
-                  <td>{device.deviceType}</td>
-                  <td>{device.zone}</td>
-                  <td>
+                  <td style={{ ...fadeStyle, fontWeight: 500 }}>{device.serialNumber}</td>
+                  <td style={fadeStyle}>{device.deviceType}</td>
+                  <td style={fadeStyle}>{device.zone}</td>
+                  <td style={fadeStyle}>
                     {device.description ? (
                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }} title={device.description}>
                         {device.description.length > 25 ? device.description.substring(0, 25) + '...' : device.description}
@@ -338,8 +347,8 @@ export default function Devices() {
                       <span style={{ color: 'var(--text-secondary)' }}>-</span>
                     )}
                   </td>
-                  <td>{device.registeredAt}</td>
-                  <td>
+                  <td style={fadeStyle}>{device.registeredAt}</td>
+                  <td style={fadeStyle}>
                     {device.isActive ? (
                       <span className="badge badge-success">Active</span>
                     ) : (
@@ -381,7 +390,8 @@ export default function Devices() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filteredDevices.length === 0 && (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
@@ -515,18 +525,40 @@ export default function Devices() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '400px' }}>
             <div className="modal-header">
-              <h2>Confirm Deletion</h2>
-              <button className="close-button" onClick={() => setDeviceToDelete(null)}>×</button>
+              <h2>Confirm Decommission</h2>
+              <button className="btn btn-ghost" onClick={() => setDeviceToDelete(null)}>✕</button>
             </div>
             <div className="modal-body">
               <p>Are you sure you want to decommission this device? It will be marked as inactive.</p>
             </div>
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setDeviceToDelete(null)}>
                 Cancel
               </button>
               <button className="btn btn-primary" onClick={confirmDeleteDevice} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
                 Decommission
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deviceToPermanentDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Confirm Permanent Deletion</h2>
+              <button className="btn btn-ghost" onClick={() => setDeviceToPermanentDelete(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to completely delete this device? This action cannot be undone and will permanently remove all associated data.</p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setDeviceToPermanentDelete(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmPermanentDelete} style={{ backgroundColor: 'var(--danger)', color: 'white', border: 'none' }}>
+                Delete Permanently
               </button>
             </div>
           </div>
