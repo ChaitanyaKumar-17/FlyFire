@@ -129,7 +129,7 @@ export default function Dashboard() {
           </div>
           <div className="stat-content">
             <div className="stat-value">{stats.totalDevices}</div>
-            <div className="stat-label">Total Active Devices</div>
+            <div className="stat-label">Total Active Equipment</div>
           </div>
         </div>
         
@@ -186,7 +186,7 @@ export default function Dashboard() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Device Serial</th>
+                <th>Equipment Serial</th>
                 <th>Type</th>
                 <th>Inspector</th>
                 <th>Date</th>

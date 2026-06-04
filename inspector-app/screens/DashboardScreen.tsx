@@ -327,9 +327,9 @@ export default function DashboardScreen() {
                 <ShieldCheck size={26} color="#10B981" />
               </View>
               <View style={{ marginLeft: 16, flex: 1 }}>
-                <Text style={styles.activeDevicesTitle}>Devices</Text>
+                <Text style={styles.activeDevicesTitle}>Equipment</Text>
                 <Text style={styles.activeDevicesSubtitle}>
-                  {activeDevices.filter(d => d.is_active).length} active {userRole === 'ROLE_SUPERADMIN' ? 'devices total' : 'devices in your zone'}
+                  {activeDevices.filter(d => d.is_active).length} active {userRole === 'ROLE_SUPERADMIN' ? 'equipment total' : 'equipment in your zone'}
                 </Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
@@ -422,7 +422,7 @@ export default function DashboardScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: '80%' }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={styles.modalTitle}>{userRole === 'ROLE_SUPERADMIN' ? 'All Registered Devices' : 'Devices in Your Zone'}</Text>
+              <Text style={styles.modalTitle}>{userRole === 'ROLE_SUPERADMIN' ? 'All Registered Equipment' : 'Equipment in Your Zone'}</Text>
               <TouchableOpacity onPress={() => setShowDevicesModal(false)}>
                 <Text style={{fontSize: 20, color: '#6B7280'}}>✕</Text>
               </TouchableOpacity>

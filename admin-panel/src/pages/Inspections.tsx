@@ -121,7 +121,7 @@ export default function Inspections() {
       toast.error('No records to export');
       return;
     }
-    const headers = ['Device Serial', 'Type', 'Zone', 'Inspector', 'Date', 'Time', 'Remark'];
+    const headers = ['Equipment Serial', 'Type', 'Zone', 'Inspector', 'Date', 'Time', 'Remark'];
     const csvContent = [
       headers.join(','),
       ...filteredInspections.map(insp => {
@@ -220,7 +220,7 @@ export default function Inspections() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Device Serial</th>
+                  <th>Equipment Serial</th>
                   <th>Type</th>
                   <th>Zone</th>
                   <th>Inspector</th>

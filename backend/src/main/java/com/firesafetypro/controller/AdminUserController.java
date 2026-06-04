@@ -206,6 +206,8 @@ public class AdminUserController {
         if (requesterIdStr == null) return ResponseEntity.status(401).build();
 
         String fullName = payload.get("fullName");
+        String roleStr = payload.get("role");
+        String zoneIdStr = payload.get("zoneId");
         if (fullName == null || fullName.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Full name is required."));
         }
@@ -229,9 +231,20 @@ public class AdminUserController {
 
         try {
             targetUser.setFullName(fullName);
+            
+            if (requester.getRole() == UserRole.ROLE_SUPERADMIN) {
+                if (roleStr != null && !roleStr.isBlank()) {
+                    targetUser.setRole(UserRole.valueOf(roleStr));
+                }
+                if (zoneIdStr != null && !zoneIdStr.isBlank()) {
+                    targetUser.setZone(zoneRepository.findById(UUID.fromString(zoneIdStr)).orElse(null));
+                } else if (payload.containsKey("zoneId")) {
+                    targetUser.setZone(null);
+                }
+            }
+            
             userRepository.save(targetUser);
-
-            // Supabase auth service would typically require updating user meta_data if we cared, but we fetch from users table.
+            authService.updateAuthUserMetadata(id.toString(), fullName, targetUser.getRole().name());
             
             return ResponseEntity.ok(Map.of("message", "Profile updated successfully.", "fullName", fullName));
         } catch (Exception e) {

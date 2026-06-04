@@ -55,7 +55,7 @@ export default function InspectionDetailScreen() {
         if (userData?.zone_id !== data.zone_id) {
           Alert.alert(
             'Unauthorized Zone', 
-            'This device belongs to a different zone. You are not authorized to inspect it.',
+            'This equipment belongs to a different zone. You are not authorized to inspect it.',
             [{ text: 'OK', onPress: () => navigation.goBack() }]
           );
           return;
@@ -81,7 +81,7 @@ export default function InspectionDetailScreen() {
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to fetch device details. ' + error.message);
+      Alert.alert('Error', 'Failed to fetch equipment details. ' + error.message);
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -97,7 +97,7 @@ export default function InspectionDetailScreen() {
     }
 
     if (!device?.is_active) {
-      setSubmitError('Cannot inspect a decommissioned device.');
+      setSubmitError('Cannot inspect decommissioned equipment.');
       return;
     }
 
@@ -140,7 +140,7 @@ export default function InspectionDetailScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Fetching device details...</Text>
+        <Text style={styles.loadingText}>Fetching equipment details...</Text>
       </View>
     );
   }
@@ -170,7 +170,7 @@ export default function InspectionDetailScreen() {
 
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Device Information</Text>
+            <Text style={styles.sectionTitle}>Equipment Information</Text>
             
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Serial Number</Text>
@@ -217,10 +217,10 @@ export default function InspectionDetailScreen() {
           <View style={styles.formContainer}>
             <Text style={styles.sectionTitle}>Log New Inspection</Text>
             
-            <Text style={styles.label}>Device Remark</Text>
+            <Text style={styles.label}>Equipment Remark</Text>
             <TextInput
               style={[styles.textArea, { height: 80, marginBottom: 16 }]}
-              placeholder="Add or update device specific remark..."
+              placeholder="Add or update equipment specific remark..."
               placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={3}

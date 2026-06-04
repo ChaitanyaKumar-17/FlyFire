@@ -131,7 +131,7 @@ export default function Settings() {
       
       if (response.ok) {
         setNewDeviceType('');
-        toast.success('Device type created successfully!');
+        toast.success('Equipment type created successfully!');
         clearCache(); // clear everything since settings affect filters
         fetchData(true);
       } else {
@@ -183,7 +183,7 @@ export default function Settings() {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (response.ok) {
-        toast.success('Device type deleted successfully!');
+        toast.success('Equipment type deleted successfully!');
         clearCache();
         fetchData(true);
       } else {
@@ -204,7 +204,7 @@ export default function Settings() {
       <div className="page-header">
         <div>
           <h1 className="page-title">System Settings</h1>
-          <p className="page-description">Manage global configurations, zones, and device catalogs</p>
+          <p className="page-description">Manage global configurations, zones, and equipment catalogs</p>
         </div>
       </div>
 
@@ -268,7 +268,7 @@ export default function Settings() {
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <Tag size={24} style={{ color: 'var(--primary)' }} />
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Device Types Catalog</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Equipment Types Catalog</h2>
           </div>
           
           <form onSubmit={handleCreateDeviceType} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
@@ -304,14 +304,14 @@ export default function Settings() {
                     <td style={{ fontWeight: 500 }}>{d.name}</td>
                     <td>{new Date(d.created_at).toLocaleDateString()}</td>
                     <td>
-                      <button className="btn btn-ghost" style={{ color: 'var(--danger)', padding: '0.25rem' }} onClick={() => handleDeleteDeviceType(d.id)} title="Delete Device Type">
+                      <button className="btn btn-ghost" style={{ color: 'var(--danger)', padding: '0.25rem' }} onClick={() => handleDeleteDeviceType(d.id)} title="Delete Equipment Type">
                         <Trash2 size={16} />
                       </button>
                     </td>
                   </tr>
                 ))}
                 {deviceTypes.length === 0 && !loading && (
-                  <tr><td colSpan={2} style={{ textAlign: 'center' }}>No device types created yet.</td></tr>
+                  <tr><td colSpan={2} style={{ textAlign: 'center' }}>No equipment types created yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -383,7 +383,7 @@ export default function Settings() {
               <button className="close-button" onClick={() => setDeviceTypeToDelete(null)}>×</button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to delete this device type? This action cannot be undone.</p>
+              <p>Are you sure you want to delete this equipment type? This action cannot be undone.</p>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="btn btn-secondary" onClick={() => setDeviceTypeToDelete(null)}>Cancel</button>

@@ -112,7 +112,7 @@ export default function Login() {
             <ShieldAlert size={32} />
           </div>
           <h1 className="page-title" style={{ fontSize: '1.5rem' }}>FireSafetyPro Admin</h1>
-          <p className="page-description">Sign in to manage devices and inspections</p>
+          <p className="page-description">Sign in to manage equipment and inspections</p>
         </div>
 
         {error && (

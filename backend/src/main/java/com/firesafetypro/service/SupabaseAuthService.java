@@ -134,4 +134,30 @@ public class SupabaseAuthService {
             throw new RuntimeException("Failed to reset password in Supabase Auth: " + response.body());
         }
     }
+
+    public void updateAuthUserMetadata(String userId, String fullName, String role) throws Exception {
+        String endpoint = supabaseUrl + "/auth/v1/admin/users/" + userId;
+        
+        Map<String, Object> payload = Map.of(
+                "user_metadata", Map.of(
+                        "full_name", fullName,
+                        "role", role
+                )
+        );
+        String jsonPayload = objectMapper.writeValueAsString(payload);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .header("Authorization", "Bearer " + serviceRoleKey)
+                .header("apikey", serviceRoleKey)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("Failed to update user metadata in Supabase Auth: " + response.body());
+        }
+    }
 }

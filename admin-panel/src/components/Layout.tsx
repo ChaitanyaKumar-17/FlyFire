@@ -58,11 +58,11 @@ export default function Layout() {
           </NavLink>
           
           <NavLink 
-            to="/devices" 
+            to="/equipment" 
             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
           >
             <QrCode size={20} />
-            <span>Devices</span>
+            <span>Equipment</span>
           </NavLink>
           
           <NavLink 

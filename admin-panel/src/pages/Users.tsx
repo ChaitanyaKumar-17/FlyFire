@@ -34,6 +34,7 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterZone, setFilterZone] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userInspections, setUserInspections] = useState<any[]>([]);
@@ -43,6 +44,8 @@ export default function Users() {
 
   const [editingName, setEditingName] = useState(false);
   const [editFullName, setEditFullName] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editZoneId, setEditZoneId] = useState('');
 
   const filteredUsers = users.filter(u => {
     const searchLower = searchQuery.toLowerCase();
@@ -51,7 +54,11 @@ export default function Users() {
                           (u.email || '').toLowerCase().includes(searchLower);
     const matchesRole = filterRole === 'all' || u.role === filterRole;
     const matchesZone = filterZone === 'all' || u.zone === filterZone;
-    return matchesSearch && matchesRole && matchesZone;
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'active' ? u.isEnabled : !u.isEnabled);
+    return matchesSearch && matchesRole && matchesZone && matchesStatus;
+  }).sort((a, b) => {
+    if (a.isEnabled === b.isEnabled) return 0;
+    return a.isEnabled ? -1 : 1;
   });
 
   useEffect(() => {
@@ -185,7 +192,8 @@ export default function Users() {
         }
           
         toast.success('User deleted successfully!');
-        fetchUsers();
+        clearCache('users');
+        fetchUsers(true);
       } catch (error: any) {
         toast.error(error.message || 'Error deleting user');
       }
@@ -193,6 +201,18 @@ export default function Users() {
 
   const handleDisable = (id: string) => {
     setUserToDelete(id);
+  };
+
+  const handleReinstate = (user: User) => {
+    setNewUser({
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      password: '',
+      role: user.role,
+      zoneId: zones.find(z => z.name === user.zone)?.id || ''
+    });
+    setIsModalOpen(true);
   };
 
   const fetchUserInspections = async (userId: string) => {
@@ -245,7 +265,11 @@ export default function Users() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ fullName: editFullName })
+        body: JSON.stringify({ 
+          fullName: editFullName,
+          role: editRole,
+          zoneId: editZoneId
+        })
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -300,6 +324,16 @@ export default function Users() {
             <option value="ROLE_ADMIN">Zonal Admin</option>
             <option value="ROLE_USER">Inspector</option>
           </select>
+          <select 
+            className="form-control" 
+            style={{ width: '150px' }}
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
           {userRole === 'ROLE_SUPERADMIN' && (
             <select 
               className="form-control" 
@@ -336,17 +370,19 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user) => (
+              {filteredUsers.map((user) => {
+                const fadeStyle = user.isEnabled ? {} : { opacity: 0.5 };
+                return (
                 <tr 
                   key={user.id} 
-                  style={{ opacity: user.isEnabled ? 1 : 0.6, cursor: 'pointer' }}
+                  style={{ cursor: 'pointer' }}
                   onClick={() => handleRowClick(user)}
                   className="table-row-hover"
                 >
-                  <td style={{ fontWeight: 500 }}>{user.fullName}</td>
-                  <td>@{user.username}</td>
-                  <td>{user.email}</td>
-                  <td>
+                  <td style={{ ...fadeStyle, fontWeight: 500 }}>{user.fullName}</td>
+                  <td style={fadeStyle}>@{user.username}</td>
+                  <td style={fadeStyle}>{user.email}</td>
+                  <td style={fadeStyle}>
                     {user.role === 'ROLE_SUPERADMIN' ? (
                       <span className="badge badge-danger" style={{ display: 'inline-flex', gap: '4px', whiteSpace: 'nowrap' }}>
                         <ShieldAlert size={12} /> SUPER ADMIN
@@ -361,8 +397,8 @@ export default function Users() {
                       </span>
                     )}
                   </td>
-                  <td>{user.zone}</td>
-                  <td>
+                  <td style={fadeStyle}>{user.zone}</td>
+                  <td style={fadeStyle}>
                     {user.isEnabled ? (
                       <span className="badge badge-success">Active</span>
                     ) : (
@@ -380,9 +416,20 @@ export default function Users() {
                         <UserMinus size={18} />
                       </button>
                     )}
+                    {!user.isEnabled && user.role !== 'ROLE_SUPERADMIN' && (
+                      <button 
+                        className="btn btn-ghost" 
+                        title="Reinstate User" 
+                        onClick={(e) => { e.stopPropagation(); handleReinstate(user); }} 
+                        style={{ color: 'var(--primary)' }}
+                      >
+                        <UserPlus size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
@@ -550,9 +597,14 @@ export default function Users() {
                       <button 
                         className="btn btn-primary" 
                         style={{ backgroundColor: 'var(--primary)', color: 'white', border: 'none' }}
-                        onClick={() => { setEditFullName(selectedUser.fullName); setEditingName(true); }}
+                        onClick={() => { 
+                          setEditFullName(selectedUser.fullName); 
+                          setEditRole(selectedUser.role);
+                          setEditZoneId(zones.find(z => z.name === selectedUser.zone)?.id || '');
+                          setEditingName(true); 
+                        }}
                       >
-                        Edit Name
+                        Edit Profile
                       </button>
                     )}
                   </div>
@@ -568,6 +620,34 @@ export default function Users() {
                           onChange={(e) => setEditFullName(e.target.value)}
                         />
                       </div>
+                      {userRole === 'ROLE_SUPERADMIN' && (
+                        <>
+                          <div className="form-group" style={{ marginBottom: '1rem' }}>
+                            <label className="form-label">Role</label>
+                            <select 
+                              className="form-control" 
+                              value={editRole}
+                              onChange={(e) => setEditRole(e.target.value)}
+                            >
+                              <option value="ROLE_USER">Inspector</option>
+                              <option value="ROLE_ADMIN">Zonal Admin</option>
+                            </select>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: '1rem' }}>
+                            <label className="form-label">Assign Zone</label>
+                            <select 
+                              className="form-control" 
+                              value={editZoneId}
+                              onChange={(e) => setEditZoneId(e.target.value)}
+                            >
+                              <option value="">Global (No specific zone)</option>
+                              {zones.map(z => (
+                                <option key={z.id} value={z.id}>{z.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
                       <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button type="button" className="btn btn-ghost" onClick={() => setEditingName(false)}>Cancel</button>
                         <button type="submit" className="btn btn-primary">Save Profile</button>
@@ -631,7 +711,7 @@ export default function Users() {
                   <thead>
                     <tr>
                       <th>Date</th>
-                      <th>Device Serial</th>
+                      <th>Equipment Serial</th>
                       <th>Type</th>
                       <th>Remark</th>
                     </tr>

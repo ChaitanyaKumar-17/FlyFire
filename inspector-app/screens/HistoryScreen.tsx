@@ -169,7 +169,7 @@ export default function HistoryScreen() {
         <Text style={styles.remark}>{item.remark}</Text>
         {item.devices?.description ? (
           <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
-            <Text style={styles.remarkLabel}>Device Remark</Text>
+            <Text style={styles.remarkLabel}>Equipment Remark</Text>
             <Text style={[styles.remark, { color: '#6B7280' }]}>{item.devices.description}</Text>
           </View>
         ) : null}
@@ -209,7 +209,7 @@ export default function HistoryScreen() {
           >
             <Tag size={14} color={selectedDeviceType ? "#FFFFFF" : "#6B7280"} />
             <Text style={[styles.filterChipText, selectedDeviceType ? styles.filterChipTextActive : null]}>
-              {selectedDeviceType || 'All Device Types'}
+              {selectedDeviceType || 'All Equipment Types'}
             </Text>
             <ChevronDown size={14} color={selectedDeviceType ? "#FFFFFF" : "#6B7280"} />
           </TouchableOpacity>
@@ -291,13 +291,13 @@ export default function HistoryScreen() {
       <Modal visible={showDeviceFilter} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Device Type</Text>
+            <Text style={styles.modalTitle}>Select Equipment Type</Text>
             <ScrollView style={{ maxHeight: 300 }}>
               <TouchableOpacity 
                 style={[styles.modalItem, !selectedDeviceType && styles.modalItemActive]}
                 onPress={() => { setSelectedDeviceType(null); setShowDeviceFilter(false); }}
               >
-                <Text style={!selectedDeviceType ? styles.modalItemTextActive : styles.modalItemText}>All Device Types</Text>
+                <Text style={!selectedDeviceType ? styles.modalItemTextActive : styles.modalItemText}>All Equipment Types</Text>
               </TouchableOpacity>
               {uniqueDeviceTypes.map(type => (
                 <TouchableOpacity 

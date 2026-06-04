@@ -179,14 +179,14 @@ export default function Devices() {
         throw new Error(errorData.error || `Backend returned status ${response.status}`);
       }
       
-      toast.success('Device registered successfully');
+      toast.success('Equipment registered successfully');
       setNewDevice({ serialNumber: '', deviceTypeId: '', zoneId: '', description: '' });
       setIsModalOpen(false);
       clearCache('devices');
       clearCache('dashboard');
       fetchDevices(true);
     } catch (error: any) {
-      toast.error(error.message || 'Error registering device');
+      toast.error(error.message || 'Error registering equipment');
     } finally {
       setIsSubmitting(false);
     }
@@ -204,13 +204,13 @@ export default function Devices() {
         
       if (error) throw error;
       
-      toast.success('Device decommissioned completely.');
+      toast.success('Equipment decommissioned completely.');
       setDeviceToDelete(null);
       clearCache('devices');
       clearCache('dashboard');
       fetchDevices(true);
     } catch (error: any) {
-      toast.error(error.message || 'Error decommissioning device');
+      toast.error(error.message || 'Error decommissioning equipment');
     }
   };
 
@@ -231,13 +231,13 @@ export default function Devices() {
         .eq('id', deviceToPermanentDelete);
         
       if (error) throw error;
-      toast.success('Device permanently deleted!');
+      toast.success('Equipment permanently deleted!');
       setDeviceToPermanentDelete(null);
       clearCache('devices');
       clearCache('dashboard');
       fetchDevices(true);
     } catch (error: any) {
-      toast.error('Error permanently deleting device: ' + error.message);
+      toast.error('Error permanently deleting equipment: ' + error.message);
     }
   };
 
@@ -245,12 +245,12 @@ export default function Devices() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Devices</h1>
-          <p className="page-description">Manage and track all registered safety devices</p>
+          <h1 className="page-title">Equipment</h1>
+          <p className="page-description">Manage and track all registered safety equipment</p>
         </div>
         <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
           <Plus size={20} />
-          Register Device
+          Register Equipment
         </button>
       </div>
 
@@ -315,7 +315,7 @@ export default function Devices() {
             <thead>
               <tr>
                 <th>Serial Number</th>
-                <th>Device Type</th>
+                <th>Equipment Type</th>
                 <th>Zone</th>
                 <th>Remark</th>
                 <th>Registration Date</th>
@@ -410,7 +410,7 @@ export default function Devices() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Register New Device</h2>
+              <h2 className="modal-title">Register New Equipment</h2>
               <button className="btn btn-ghost" onClick={() => setIsModalOpen(false)}>✕</button>
             </div>
             <form onSubmit={handleRegister}>
@@ -425,7 +425,7 @@ export default function Devices() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Device Type</label>
+                <label className="form-label">Equipment Type</label>
                 <select 
                   className="form-control" 
                   required
@@ -470,7 +470,7 @@ export default function Devices() {
                   {isSubmitting ? (
                     <><div className="animate-spin" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%' }} /> Registering...</>
                   ) : (
-                    "Register Device"
+                    "Register Equipment"
                   )}
                 </button>
               </div>
@@ -510,7 +510,7 @@ export default function Devices() {
                   {audits.length === 0 && (
                     <tr>
                       <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        No audit history found for this device.
+                        No audit history found for this equipment.
                       </td>
                     </tr>
                   )}
@@ -529,7 +529,7 @@ export default function Devices() {
               <button className="btn btn-ghost" onClick={() => setDeviceToDelete(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to decommission this device? It will be marked as inactive.</p>
+              <p>Are you sure you want to decommission this equipment? It will be marked as inactive.</p>
             </div>
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setDeviceToDelete(null)}>
@@ -551,7 +551,7 @@ export default function Devices() {
               <button className="btn btn-ghost" onClick={() => setDeviceToPermanentDelete(null)}>✕</button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to completely delete this device? This action cannot be undone and will permanently remove all associated data.</p>
+              <p>Are you sure you want to completely delete this equipment? This action cannot be undone and will permanently remove all associated data.</p>
             </div>
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setDeviceToPermanentDelete(null)}>
@@ -569,7 +569,7 @@ export default function Devices() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
             <div className="modal-header">
-              <h2 className="modal-title">Device QR Code</h2>
+              <h2 className="modal-title">Equipment QR Code</h2>
               <button className="btn btn-ghost" onClick={() => setSelectedQrDevice(null)}>✕</button>
             </div>
             <div className="modal-body" style={{ padding: '2rem 1rem' }}>
